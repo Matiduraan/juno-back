@@ -144,3 +144,22 @@ export const exportGuestsInfo = async (partyId: number) => {
 
   return url;
 };
+
+export const updateGuestsSeats = async (
+  partyId: number,
+  seats: { guestId: number; seatId: number }[]
+) => {
+  return db.$transaction(
+    seats.map(({ guestId, seatId }) =>
+      db.partyGuest.update({
+        where: {
+          party_guest_id: guestId,
+          party_id: partyId,
+        },
+        data: {
+          guest_seat_id: seatId,
+        },
+      })
+    )
+  );
+};

@@ -5,6 +5,7 @@ import {
   exportGuestsInfo,
   getPartyGuests,
   getPartyGuestsCountByStatus,
+  updateGuestsSeats,
   updateGuestStatus,
   updatePartyGuest,
 } from "../controllers/guestsController";
@@ -155,6 +156,24 @@ router.put("/:partyId/guests", async (req, res) => {
     res.status(200).json(updatedGuest);
   } catch (error) {
     console.error("Error updating guest:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.put("/:partyId/guests/seats", async (req, res) => {
+  const { guests } = req.body;
+  const { partyId } = req.params;
+
+  if (!guests || !Array.isArray(guests) || guests.length === 0) {
+    res.status(400).json({ error: "Missing required fields" });
+    return;
+  }
+
+  try {
+    const updatedGuest = await updateGuestsSeats(parseInt(partyId), guests);
+    res.status(200).json(updatedGuest);
+  } catch (error) {
+    console.error("Error updating guest seat:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
