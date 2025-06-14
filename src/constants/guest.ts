@@ -1,0 +1,1 @@
+export const GUEST_STATUS = ["ACCEPTED", "DECLINED", "INVITED", "PENDING"];
