@@ -18,7 +18,7 @@ export const getPartyGuests = async (
       guest_status: filters.status?.length ? { in: filters.status } : undefined,
     },
     select: {
-      party_guest_id: true,
+      guest_id: true,
       guest_email: true,
       guest_name: true,
       guest_phone: true,
@@ -84,7 +84,7 @@ export const massiveAddPartyGuests = (guests: AddGuestInput[]) => {
 export const deletePartyGuest = (guestId: number, partyId: number) => {
   return db.partyGuest.delete({
     where: {
-      party_guest_id: guestId,
+      guest_id: guestId,
       party_id: partyId,
     },
   });
@@ -93,7 +93,7 @@ export const deletePartyGuest = (guestId: number, partyId: number) => {
 export const updateGuestStatus = (guestId: number, status: GuestStatus) => {
   return db.partyGuest.update({
     where: {
-      party_guest_id: guestId,
+      guest_id: guestId,
     },
     data: {
       guest_status: status,
@@ -108,7 +108,7 @@ export const updatePartyGuest = (
 ) => {
   return db.partyGuest.update({
     where: {
-      party_guest_id: guestId,
+      guest_id: guestId,
       party_id: partyId,
     },
     data: guestData,
@@ -153,7 +153,7 @@ export const updateGuestsSeats = async (
     seats.map(({ guestId, seatId }) =>
       db.partyGuest.update({
         where: {
-          party_guest_id: guestId,
+          guest_id: guestId,
           party_id: partyId,
         },
         data: {
