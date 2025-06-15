@@ -27,7 +27,7 @@ export const getPartyGuests = async (
       guest_avatar: true,
       guest_seat_id: true,
     },
-    take: limit,
+    take: limit !== 0 ? limit : undefined,
     skip: offset,
   });
 

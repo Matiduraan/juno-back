@@ -13,15 +13,21 @@ export const getLayout = (layoutId: number) => {
   });
 };
 
-export const getUserLayouts = (userId: number) => {
+export const getUserLayouts = (userId: number, offset = 0, limit = 50) => {
   return db.layout.findMany({
     where: {
       layout_owner_id: userId,
       layout_type: "MODEL",
     },
-    include: {
-      LayoutItem: true,
+    select: {
+      layout_id: true,
+      layout_name: true,
+      layout_type: true,
+      layout_description: true,
+      layout_owner_id: true,
     },
+    take: limit !== 0 ? limit : undefined,
+    skip: offset,
   });
 };
 

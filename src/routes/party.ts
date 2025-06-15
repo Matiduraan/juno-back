@@ -108,7 +108,6 @@ router.post("/:partyId/guests", async (req, res) => {
     res.status(400).json({ error: "Invalid party ID" });
     return;
   }
-  console.log("Adding guest to party:", req.body);
   const { guest_name, guest_notes, guest_email, guest_phone } = req.body;
 
   if (!guest_name) {

@@ -14,23 +14,26 @@ datasource db {
 }
 
 model User {
-  user_id    Int         @id @default(autoincrement())
-  email      String      @unique
+  user_id    Int      @id @default(autoincrement())
+  email      String   @unique
   name       String?
-  created_at DateTime    @default(now())
-  updated_at DateTime    @updatedAt
-  Layout     Layout[]
-  Party      Party[]
-  PartyHost  PartyHost[]
+  user_role  UserRole @default(PLANNER)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  Layout    Layout[]
+  Party     Party[]
+  PartyHost PartyHost[]
 }
 
 model Layout {
-  layout_id       Int        @id @default(autoincrement())
-  layout_owner_id Int
-  layout_name     String
-  layout_type     LayoutType
-  created_at      DateTime   @default(now())
-  updated_at      DateTime   @updatedAt
+  layout_id          Int        @id @default(autoincrement())
+  layout_owner_id    Int
+  layout_name        String
+  layout_description String?
+  layout_type        LayoutType
+  created_at         DateTime   @default(now())
+  updated_at         DateTime   @updatedAt
 
   layoutOwner User         @relation(fields: [layout_owner_id], references: [user_id])
   Party       Party[]
@@ -101,6 +104,11 @@ model PartyHost {
 
   Party Party @relation(fields: [party_id], references: [party_id])
   Host  User  @relation(fields: [host_id], references: [user_id])
+}
+
+enum UserRole {
+  PLANNER
+  HOST
 }
 
 enum LayoutType {
