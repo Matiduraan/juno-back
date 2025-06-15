@@ -1,4 +1,5 @@
 import { Party, PrismaClient } from "@prisma/client";
+import { layoutIdOnPartyCreation } from "./layoutController";
 
 const db = new PrismaClient();
 
@@ -103,6 +104,24 @@ export const getPartyLayout = (partyId: number) => {
           PartyGuest: true,
         },
       },
+    },
+  });
+};
+
+export const createParty = async (data: CreatePartyInput) => {
+  const layoutId = await layoutIdOnPartyCreation(data.userId, data.layoutId);
+  return db.party.create({
+    data: {
+      party_name: data.partyName,
+      party_date: new Date(data.partyDate),
+      party_location: data.partyLocation,
+      party_start_time: new Date(data.partyStartTime),
+      party_end_time: new Date(data.partyEndTime),
+      organizer_id: data.userId,
+      layout_id: layoutId,
+    },
+    include: {
+      Layout: true,
     },
   });
 };
