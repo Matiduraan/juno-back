@@ -1,20 +1,94 @@
 import express from "express";
 import {
+  addMultipleGuests,
   addPartyGuest,
   deletePartyGuest,
   exportGuestsInfo,
   getPartyGuests,
   getPartyGuestsCountByStatus,
+  processGuestsFile,
   updateGuestsSeats,
   updateGuestStatus,
   updatePartyGuest,
 } from "../controllers/guestsController";
-import { getParty, getPartyLayout } from "../controllers/partyController";
+import {
+  createParty,
+  getParty,
+  getPartyLayout,
+  getPartySummaryMetrics,
+  updateParty,
+} from "../controllers/partyController";
 import { buildGuestsFilter } from "../utils/guestsFilters";
 import { utils, write } from "xlsx";
 import { GUEST_STATUS } from "../constants/guest";
+import { createPartyLayout } from "../controllers/layoutController";
+import multer from "multer";
+import xlsx from "node-xlsx";
+import authMiddleware from "../middlewares/authMiddlewre";
+import { validatePartyAccess } from "../utils/authorization/party";
+import { getUpcomingEvents } from "../controllers/calendarController";
+import {
+  getPartyHostInvitations,
+  inviteHosts,
+} from "../controllers/hostInvitationsController";
+import { HostInvitationStatus } from "@prisma/client";
+
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
 const router = express();
+
+router.use(authMiddleware);
+
+router.post("/", async (req, res) => {
+  const userId = req.auth.userId;
+  if (!userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const {
+    party_name,
+    party_date,
+    party_location_name,
+    party_location_link,
+    party_start_time,
+    party_end_time,
+    hosts,
+    layoutId,
+  } = req.body;
+  if (
+    !party_name ||
+    !party_date ||
+    !party_location_name ||
+    !party_start_time ||
+    !party_end_time ||
+    !layoutId
+  ) {
+    res.status(400).json({ error: "Missing required fields" });
+    return;
+  }
+  try {
+    const newParty = await createParty({
+      userId,
+      partyDate: party_date,
+      partyName: party_name,
+      partyLocationName: party_location_name,
+      partyLocationLink: party_location_link,
+      partyStartTime: party_start_time,
+      partyEndTime: party_end_time,
+      layoutId: layoutId,
+    });
+    try {
+      if (hosts && Array.isArray(hosts) && hosts.length > 0) {
+        await inviteHosts(hosts);
+      }
+    } catch (_) {}
+    res.status(201).json(newParty);
+  } catch (error) {
+    console.error("Error creating party:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 router.get("/:partyId", async (req, res) => {
   const { partyId } = req.params;
@@ -28,6 +102,15 @@ router.get("/:partyId", async (req, res) => {
       res.status(404).json({ error: "No party found" });
       return;
     }
+    if (
+      party.organizer_id !== req.auth.userId &&
+      !party.hosts.some((host) => host.host_id === req.auth.userId)
+    ) {
+      res.status(403).json({
+        error: "Forbidden: You are not authorized to view this party",
+      });
+      return;
+    }
     res.status(200).json(party);
   } catch (error) {
     console.error("Error fetching guests:", error);
@@ -37,12 +120,23 @@ router.get("/:partyId", async (req, res) => {
 
 router.get("/:partyId/guests", async (req, res) => {
   const { partyId } = req.params;
-  const { offset = 0, limit = 50, status, query } = req.query;
+  const { offset = 0, limit = 50, status, query, sort, sortBy } = req.query;
   if (!partyId || isNaN(parseInt(partyId))) {
     res.status(400).json({ error: "Invalid party ID" });
     return;
   }
   try {
+    const hasAccess = await validatePartyAccess(
+      parseInt(partyId),
+      req.auth.userId
+    );
+    if (!hasAccess) {
+      res.status(403).json({
+        error: "Forbidden: You are not authorized to view this party's guests",
+      });
+      return;
+    }
+    const sortDirection = sort?.toString();
     const guests = await getPartyGuests(
       parseInt(partyId),
       parseInt(offset.toString()),
@@ -50,7 +144,14 @@ router.get("/:partyId/guests", async (req, res) => {
       buildGuestsFilter(
         query ? query.toString() : undefined,
         status ? status.toString() : undefined
-      )
+      ),
+      {
+        field: sortBy ? sortBy.toString() : "guest_name",
+        direction:
+          sortDirection && (sortDirection === "asc" || sortDirection === "desc")
+            ? sortDirection
+            : "asc",
+      }
     );
     res.status(200).json(guests);
   } catch (error) {
@@ -66,6 +167,17 @@ router.get("/:partyId/guests/export", async (req, res) => {
     return;
   }
   try {
+    const hasAccess = await validatePartyAccess(
+      parseInt(partyId),
+      req.auth.userId
+    );
+    if (!hasAccess) {
+      res.status(403).json({
+        error:
+          "Forbidden: You are not authorized to export this party's guests",
+      });
+      return;
+    }
     const guests = await getPartyGuests(parseInt(partyId));
 
     const worksheet = utils.json_to_sheet(guests.data);
@@ -87,6 +199,89 @@ router.get("/:partyId/guests/export", async (req, res) => {
   }
 });
 
+router.get("/:partyId/summaryMetrics", async (req, res) => {
+  const { partyId } = req.params;
+  if (!partyId || isNaN(parseInt(partyId))) {
+    res.status(400).json({ error: "Invalid party ID" });
+    return;
+  }
+  try {
+    const metrics = await getPartySummaryMetrics(parseInt(partyId));
+    console.log("Summary metrics:", metrics);
+    res.status(200).json(metrics);
+  } catch (error) {
+    console.error("Error fetching summary metrics:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/:partyId/upcomingEvents", async (req, res) => {
+  const { partyId } = req.params;
+  const { limit = 10 } = req.query;
+  if (!partyId || isNaN(parseInt(partyId))) {
+    res.status(400).json({ error: "Invalid party ID" });
+    return;
+  }
+  try {
+    const party = await getParty(parseInt(partyId));
+    if (!party) {
+      res.status(404).json({ error: "No party found" });
+      return;
+    }
+    const upcomingEvents = await getUpcomingEvents(
+      parseInt(partyId),
+      parseInt(limit.toString())
+    );
+    res.status(200).json(upcomingEvents);
+  } catch (error) {
+    console.error("Error fetching upcoming events:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/:partyId/hostInvitations", async (req, res) => {
+  const { partyId } = req.params;
+  if (!partyId || isNaN(parseInt(partyId))) {
+    res.status(400).json({ error: "Invalid party ID" });
+    return;
+  }
+  const status = req.query.status;
+
+  if (
+    status &&
+    status
+      .toString()
+      .split(",")
+      .some((s) => s !== "PENDING" && s !== "ACCEPTED" && s !== "REJECTED")
+  ) {
+    res.status(400).json({ error: "Invalid status filter" });
+    return;
+  }
+  try {
+    const hasAccess = await validatePartyAccess(
+      parseInt(partyId),
+      req.auth.userId
+    );
+    if (!hasAccess) {
+      res.status(403).json({
+        error: "Forbidden: You are not authorized to view this party's hosts",
+      });
+      return;
+    }
+    const invitations = await getPartyHostInvitations(
+      parseInt(partyId),
+      status
+        ? (status.toString().split(",") as HostInvitationStatus[])
+        : undefined
+    );
+
+    res.status(200).json(invitations);
+  } catch (error) {
+    console.error("Error fetching host invitations:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.get("/:partyId/guests/status", async (req, res) => {
   const { partyId } = req.params;
   if (!partyId || isNaN(parseInt(partyId))) {
@@ -94,10 +289,55 @@ router.get("/:partyId/guests/status", async (req, res) => {
     return;
   }
   try {
+    const hasAccess = await validatePartyAccess(
+      parseInt(partyId),
+      req.auth.userId
+    );
+    if (!hasAccess) {
+      res.status(403).json({
+        error:
+          "Forbidden: You are not authorized to export this party's guests",
+      });
+      return;
+    }
     const guests = await getPartyGuestsCountByStatus(parseInt(partyId));
+    console.log("Guests by status:", guests);
     res.status(200).json(guests);
   } catch (error) {
     console.error("Error fetching guests:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/:partyId/inviteHost", async (req, res) => {
+  const { partyId } = req.params;
+  if (!partyId || isNaN(parseInt(partyId))) {
+    res.status(400).json({ error: "Invalid party ID" });
+    return;
+  }
+  const { invitations } = req.body;
+  if (!invitations || !Array.isArray(invitations) || invitations.length === 0) {
+    res.status(400).json({ error: "No invitations data provided" });
+    return;
+  }
+  try {
+    const hasAccess = await validatePartyAccess(
+      parseInt(partyId),
+      req.auth.userId
+    );
+    if (!hasAccess) {
+      res.status(403).json({
+        error:
+          "Forbidden: You are not authorized to invite hosts to this party",
+      });
+      return;
+    }
+    const result = await inviteHosts(invitations);
+    res.status(201).send({
+      invitationsSent: result.count,
+    });
+  } catch (error) {
+    console.error("Error inviting hosts:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -109,6 +349,10 @@ router.post("/:partyId/guests", async (req, res) => {
     return;
   }
   const { guest_name, guest_notes, guest_email, guest_phone } = req.body;
+  if (!guest_name && !guest_email && !guest_phone && !guest_notes) {
+    res.status(400).json({ error: "Missing required fields" });
+    return;
+  }
 
   if (!guest_name) {
     res.status(400).json({ error: "Missing required fields" });
@@ -116,6 +360,17 @@ router.post("/:partyId/guests", async (req, res) => {
   }
 
   try {
+    const hasAccess = await validatePartyAccess(
+      parseInt(partyId),
+      req.auth.userId
+    );
+    if (!hasAccess) {
+      res.status(403).json({
+        error:
+          "Forbidden: You are not authorized to export this party's guests",
+      });
+      return;
+    }
     const newGuest = await addPartyGuest({
       party_id: parseInt(partyId),
       guest_name,
@@ -129,6 +384,83 @@ router.post("/:partyId/guests", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+router.post("/:partyId/guests/massive/create", async (req, res) => {
+  const { partyId } = req.params;
+  if (!partyId || isNaN(parseInt(partyId))) {
+    res.status(400).json({ error: "Invalid party ID" });
+    return;
+  }
+  const { guests } = req.body;
+  if (!guests || !Array.isArray(guests) || guests.length === 0) {
+    res.status(400).json({ error: "No guests data provided" });
+    return;
+  }
+  try {
+    const hasAccess = await validatePartyAccess(
+      parseInt(partyId),
+      req.auth.userId
+    );
+    if (!hasAccess) {
+      res.status(403).json({
+        error:
+          "Forbidden: You are not authorized to export this party's guests",
+      });
+      return;
+    }
+    const result = await addMultipleGuests(parseInt(partyId), guests);
+
+    res.status(201).send({
+      guestsCreated: result.count,
+    });
+  } catch (error) {
+    console.error("Error creating guests:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post(
+  "/:partyId/guests/massive/upload",
+  upload.single("file"),
+  async (req, res) => {
+    const { partyId } = req.params;
+    if (!partyId || isNaN(parseInt(partyId))) {
+      res.status(400).json({ error: "Invalid party ID" });
+      return;
+    }
+    if (!req.file) {
+      res.status(400).json({ error: "No file uploaded" });
+      return;
+    }
+    const fileBuffer = req.file.buffer;
+    try {
+      const hasAccess = await validatePartyAccess(
+        parseInt(partyId),
+        req.auth.userId
+      );
+      if (!hasAccess) {
+        res.status(403).json({
+          error:
+            "Forbidden: You are not authorized to export this party's guests",
+        });
+        return;
+      }
+      const worksheetsFromFile = xlsx.parse(fileBuffer, {});
+      if (worksheetsFromFile.length === 0 || !worksheetsFromFile[0].data) {
+        res.status(400).json({ error: "Invalid file format" });
+        return;
+      }
+      const [_, ...dataRows] = worksheetsFromFile[0].data;
+      console.log("Data rows:", dataRows);
+      const guests = processGuestsFile(dataRows);
+
+      res.status(200).send(guests);
+    } catch (error) {
+      console.error("Error processing file:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
 
 router.put("/:partyId/guests", async (req, res) => {
   const {
@@ -146,6 +478,17 @@ router.put("/:partyId/guests", async (req, res) => {
   }
 
   try {
+    const hasAccess = await validatePartyAccess(
+      parseInt(party_id),
+      req.auth.userId
+    );
+    if (!hasAccess) {
+      res.status(403).json({
+        error:
+          "Forbidden: You are not authorized to export this party's guests",
+      });
+      return;
+    }
     const updatedGuest = await updatePartyGuest(party_id, parseInt(guest_id), {
       guest_name,
       guest_status,
@@ -169,6 +512,17 @@ router.put("/:partyId/guests/seats", async (req, res) => {
   }
 
   try {
+    const hasAccess = await validatePartyAccess(
+      parseInt(partyId),
+      req.auth.userId
+    );
+    if (!hasAccess) {
+      res.status(403).json({
+        error:
+          "Forbidden: You are not authorized to export this party's guests",
+      });
+      return;
+    }
     const updatedGuest = await updateGuestsSeats(parseInt(partyId), guests);
     res.status(200).json(updatedGuest);
   } catch (error) {
@@ -179,6 +533,7 @@ router.put("/:partyId/guests/seats", async (req, res) => {
 
 router.put("/:partyId/guests/status", async (req, res) => {
   const { guest_id, guest_status } = req.body;
+  const { partyId } = req.params;
 
   if (!guest_id || !guest_status) {
     res.status(400).json({ error: "Missing required fields" });
@@ -191,6 +546,17 @@ router.put("/:partyId/guests/status", async (req, res) => {
   }
 
   try {
+    const hasAccess = await validatePartyAccess(
+      parseInt(partyId),
+      req.auth.userId
+    );
+    if (!hasAccess) {
+      res.status(403).json({
+        error:
+          "Forbidden: You are not authorized to export this party's guests",
+      });
+      return;
+    }
     const updatedGuest = await updateGuestStatus(
       parseInt(guest_id),
       guest_status
@@ -216,6 +582,17 @@ router.delete("/:partyId/guests/:guestId", async (req, res) => {
   }
 
   try {
+    const hasAccess = await validatePartyAccess(
+      parseInt(partyId),
+      req.auth.userId
+    );
+    if (!hasAccess) {
+      res.status(403).json({
+        error:
+          "Forbidden: You are not authorized to export this party's guests",
+      });
+      return;
+    }
     const deletedGuest = await deletePartyGuest(
       parseInt(guestId),
       parseInt(partyId)
@@ -234,6 +611,17 @@ router.get("/:partyId/layout", async (req, res) => {
     return;
   }
   try {
+    const hasAccess = await validatePartyAccess(
+      parseInt(partyId),
+      req.auth.userId
+    );
+    if (!hasAccess) {
+      res.status(403).json({
+        error:
+          "Forbidden: You are not authorized to export this party's guests",
+      });
+      return;
+    }
     const party = await getPartyLayout(parseInt(partyId));
     if (!party) {
       res.status(404).json({ error: "No party found" });
@@ -242,6 +630,78 @@ router.get("/:partyId/layout", async (req, res) => {
     res.status(200).json(party);
   } catch (error) {
     console.error("Error fetching party layout:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/layout", async (req, res) => {
+  const userId = req.auth.userId;
+  if (!userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const { layout_name } = req.body;
+  if (!layout_name || typeof layout_name !== "string") {
+    res.status(400).json({ error: "Invalid layout name" });
+    return;
+  }
+  try {
+    const layout = await createPartyLayout(userId, layout_name);
+
+    res.status(200).json(layout);
+  } catch (error) {
+    console.error("Error fetching party layout:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.put("/:partyId", async (req, res) => {
+  const { partyId } = req.params;
+  if (!partyId || isNaN(parseInt(partyId))) {
+    res.status(400).json({ error: "Invalid party ID" });
+    return;
+  }
+  const {
+    partyName,
+    partyDate,
+    partyLocationName,
+    partyLocationLink,
+    partyStartTime,
+    partyEndTime,
+  } = req.body;
+  if (
+    !partyName ||
+    !partyDate ||
+    !partyLocationName ||
+    !partyStartTime ||
+    !partyEndTime
+  ) {
+    res.status(400).json({ error: "Missing required fields" });
+    return;
+  }
+  try {
+    const hasAccess = await validatePartyAccess(
+      parseInt(partyId),
+      req.auth.userId
+    );
+    if (!hasAccess) {
+      res.status(403).json({
+        error: "Forbidden: You are not authorized to update this party",
+      });
+      return;
+    }
+    const updatedParty = await updateParty(parseInt(partyId), {
+      partyName,
+      partyDate,
+      partyLocationName,
+      partyLocationLink,
+      partyStartTime,
+      partyEndTime,
+    });
+
+    res.status(200).json(updatedParty);
+  } catch (error) {
+    console.error("Error validating party access:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });

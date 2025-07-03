@@ -1,5 +1,6 @@
 import { Party, PrismaClient } from "@prisma/client";
 import { layoutIdOnPartyCreation } from "./layoutController";
+import dayjs, { Dayjs } from "dayjs";
 
 const db = new PrismaClient();
 
@@ -69,8 +70,8 @@ export const getUserParties = (
   }));
 };
 
-export const getParty = (partyId: number) => {
-  return db.party.findFirst({
+export const getParty = async (partyId: number) => {
+  const party = await db.party.findFirst({
     where: {
       party_id: partyId,
     },
@@ -78,15 +79,46 @@ export const getParty = (partyId: number) => {
       party_id: true,
       party_name: true,
       party_date: true,
-      party_location: true,
+      party_start_time: true,
+      party_end_time: true,
+      party_location_name: true,
+      party_location_link: true,
+      organizer_id: true,
+      google_calendar_id: true,
+      PartyHosts: {
+        select: {
+          host_id: true,
+        },
+      },
+      Organizer: {
+        select: {
+          first_name: true,
+          last_name: true,
+          email: true,
+        },
+      },
       Layout: {
         select: {
           layout_id: true,
           layout_name: true,
+          layout_owner_id: true,
         },
       },
     },
   });
+  const { Layout, Organizer, PartyHosts, ...partyData } = party || {};
+  return {
+    ...partyData,
+    layout: Layout ?? {},
+    organizer: Organizer
+      ? {
+          firstName: Organizer.first_name,
+          lastName: Organizer.last_name,
+          email: Organizer.email,
+        }
+      : null,
+    hosts: PartyHosts ?? [],
+  };
 };
 
 export const getPartyLayout = (partyId: number) => {
@@ -113,12 +145,72 @@ export const createParty = async (data: CreatePartyInput) => {
   return db.party.create({
     data: {
       party_name: data.partyName,
-      party_date: new Date(data.partyDate),
-      party_location: data.partyLocation,
-      party_start_time: new Date(data.partyStartTime),
-      party_end_time: new Date(data.partyEndTime),
-      organizer_id: data.userId,
-      layout_id: layoutId,
+      party_date: dayjs(data.partyDate, "YYYY-MM-DD").toDate(),
+      party_location_name: data.partyLocationName,
+      party_location_link: data.partyLocationLink,
+      party_start_time: data.partyStartTime,
+      party_end_time: data.partyEndTime,
+      Organizer: {
+        connect: {
+          user_id: data.userId,
+        },
+      },
+      Layout: {
+        connect: {
+          layout_id: layoutId,
+        },
+      },
+    },
+    include: {
+      Layout: true,
+    },
+  });
+};
+
+export const getPartySummaryMetrics = async (partyId: number) => {
+  const guests = db.$queryRaw<
+    Array<{
+      total_guests: number;
+      confirmed_guests: number;
+    }>
+  >`
+    select COUNT(*) as total_guests, 
+            SUM(case when guest_status = 'ACCEPTED' then 1 else 0 end) as confirmed_guests from "PartyGuest" pg 
+    where pg.party_id = ${partyId}`;
+
+  const party = db.party.findFirst({
+    where: {
+      party_id: partyId,
+    },
+    select: {
+      party_date: true,
+    },
+  });
+
+  const [query, partyDate] = await Promise.all([guests, party]);
+
+  return {
+    total_guests: Number(query[0]?.total_guests ?? 0),
+    confirmed_guests: Number(query[0]?.confirmed_guests ?? 0),
+    days_until_party: dayjs(partyDate?.party_date).diff(dayjs(), "day"),
+  };
+};
+
+export const updateParty = async (
+  partyId: number,
+  data: Partial<UpdatePartyInput>
+) => {
+  return db.party.update({
+    where: {
+      party_id: partyId,
+    },
+    data: {
+      party_name: data.partyName,
+      party_date: dayjs(data.partyDate, "YYYY-MM-DD").toDate(),
+      party_location_name: data.partyLocationName,
+      party_location_link: data.partyLocationLink,
+      party_start_time: data.partyStartTime,
+      party_end_time: data.partyEndTime,
     },
     include: {
       Layout: true,

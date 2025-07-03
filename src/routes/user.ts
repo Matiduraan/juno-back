@@ -2,20 +2,37 @@ import express from "express";
 import { getUserParties } from "../controllers/partyController";
 import { Party } from "@prisma/client";
 import { getUserLayouts } from "../controllers/layoutController";
+import authMiddleware from "../middlewares/authMiddlewre";
+import { getUserDetails } from "../controllers/userController";
 
 const router = express();
 
-router.get("/", (req, res) => {
-  res.status(200).json({ message: "User route is working" });
+router.use(authMiddleware);
+
+router.get("/", async (req, res) => {
+  const userId = req.auth.userId;
+  if (!userId || isNaN(parseInt(userId.toString()))) {
+    res.status(400).json({ error: "Invalid user ID" });
+    return;
+  }
+  try {
+    const user = await getUserDetails(userId);
+    res.status(200).json(user);
+  } catch (error) {
+    console.error("Error fetching user details:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 router.get("/parties", async (req, res) => {
   try {
+    console.log("Fetching user parties", req.cookies);
     const userId = req.auth.userId;
     if (!userId || isNaN(parseInt(userId.toString()))) {
       res.status(400).json({ error: "Invalid user ID" });
       return;
     }
+
     const {
       offset = 0,
       limit = 50,
@@ -75,6 +92,7 @@ router.get("/layouts", async (req, res) => {
       parseInt(offset?.toString() || "0"),
       parseInt(limit?.toString() || "50")
     );
+
     console.log("Fetched user layouts:", layouts);
     res.status(200).json(layouts);
   } catch (error) {

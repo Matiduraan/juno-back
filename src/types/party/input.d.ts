@@ -2,11 +2,22 @@ type CreatePartyInput = {
   userId: number;
   partyName: string;
   partyDate: string;
-  partyLocation: string;
+  partyLocationName: string;
+  partyLocationLink?: string;
   partyStartTime: string;
   partyEndTime: string;
   layoutId?: number;
   hosts?: PartyHostInput[];
+};
+
+type UpdatePartyInput = {
+  userId: number;
+  partyName: string;
+  partyDate: string;
+  partyLocationName: string;
+  partyLocationLink?: string;
+  partyStartTime: string;
+  partyEndTime: string;
 };
 
 type PartyHostInput = {

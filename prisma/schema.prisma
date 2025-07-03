@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,85 +8,153 @@ datasource db {
 }
 
 model User {
-  user_id    Int      @id @default(autoincrement())
-  email      String   @unique
-  name       String?
-  user_role  UserRole @default(PLANNER)
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  user_id            Int                 @id @default(autoincrement())
+  email              String              @unique
+  created_at         DateTime            @default(now())
+  updated_at         DateTime            @updatedAt
+  user_role          UserRole            @default(PLANNER)
+  password           String
+  google_id          String?             @unique
+  first_name         String
+  last_name          String
+  GoogleRefreshToken GoogleRefreshToken?
+  Layout             Layout[]
+  Party              Party[]
+  PartyHost          PartyHost[]
+  PartyMomentType    PartyMomentType[]
+  RefreshToken       RefreshToken[]
+}
 
-  Layout    Layout[]
-  Party     Party[]
-  PartyHost PartyHost[]
+model RefreshToken {
+  token_id   Int      @id @default(autoincrement())
+  token      String   @unique
+  user_id    Int
+  created_at DateTime @default(now())
+  expires_at DateTime
+  revoked    Boolean  @default(false)
+  ip         String?
+  userAgent  String?
+  user       User     @relation(fields: [user_id], references: [user_id])
+}
+
+model GoogleRefreshToken {
+  token_id   Int      @id @default(autoincrement())
+  token      String   @unique
+  user_id    Int      @unique
+  created_at DateTime @default(now())
+  user       User     @relation(fields: [user_id], references: [user_id])
 }
 
 model Layout {
-  layout_id          Int        @id @default(autoincrement())
+  layout_id          Int          @id @default(autoincrement())
   layout_owner_id    Int
   layout_name        String
-  layout_description String?
   layout_type        LayoutType
-  created_at         DateTime   @default(now())
-  updated_at         DateTime   @updatedAt
-
-  layoutOwner User         @relation(fields: [layout_owner_id], references: [user_id])
-  Party       Party[]
-  LayoutItem  LayoutItem[]
+  created_at         DateTime     @default(now())
+  updated_at         DateTime     @updatedAt
+  layout_description String?
+  layoutOwner        User         @relation(fields: [layout_owner_id], references: [user_id])
+  LayoutItem         LayoutItem[]
+  Party              Party[]
 }
 
 model LayoutItem {
-  layout_item_id         Int      @id @default(autoincrement())
+  layout_item_id         Int          @id @default(autoincrement())
   layout_id              Int
+  created_at             DateTime     @default(now())
+  updated_at             DateTime     @updatedAt
+  layout_item_color      String?
   layout_item_name       String
-  layout_item_type       String
-  layout_item_shape      String
   layout_item_position_x Float
   layout_item_position_y Float
-  layout_item_rotation   Float
-  layout_item_seat_count Int      @default(4)
   layout_item_radius     Float?
-  layout_item_color      String?
+  layout_item_rotation   Float
+  layout_item_shape      String?
   layout_item_size       Float?
-  created_at             DateTime @default(now())
-  updated_at             DateTime @updatedAt
+  layout_item_type       String
+  layout_item_seat_count Int?         @default(0)
+  layout_item_height     Float?
+  layout_item_width      Float?
+  Layout                 Layout       @relation(fields: [layout_id], references: [layout_id], onDelete: Cascade)
+  PartyGuest             PartyGuest[]
+}
 
-  Layout     Layout       @relation(fields: [layout_id], references: [layout_id])
-  PartyGuest PartyGuest[]
+model PartyMoment {
+  moment_id          Int             @id @default(autoincrement())
+  moment_description String
+  moment_type_id     Int
+  moment_time_start  String
+  moment_time_end    String?
+  created_at         DateTime        @default(now())
+  updated_at         DateTime        @updatedAt
+  moment_name        String
+  party_id           Int
+  PartyMomentType    PartyMomentType @relation(fields: [moment_type_id], references: [moment_type_id])
+  Party              Party           @relation(fields: [party_id], references: [party_id])
+}
+
+model PartyMomentType {
+  moment_type_id    Int           @id @default(autoincrement())
+  moment_type_name  String
+  moment_type_color String
+  moment_type_icon  String?
+  created_at        DateTime      @default(now())
+  updated_at        DateTime      @updatedAt
+  user_id           Int?
+  PartyMoment       PartyMoment[]
+  User              User?         @relation(fields: [user_id], references: [user_id])
 }
 
 model Party {
-  party_id         Int      @id @default(autoincrement())
-  party_name       String
-  party_date       DateTime
-  party_location   String
-  party_start_time DateTime @db.Time()
-  party_end_time   DateTime @db.Time()
-  organizer_id     Int
-  layout_id        Int
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
+  party_id            Int              @id @default(autoincrement())
+  party_name          String
+  organizer_id        Int
+  layout_id           Int
+  created_at          DateTime         @default(now())
+  updated_at          DateTime         @updatedAt
+  party_date          DateTime
+  party_end_time      String
+  party_start_time    String
+  google_calendar_id  String?
+  party_location_link String?
+  party_location_name String
+  CalendarEvent       CalendarEvent[]
+  HostInvitation      HostInvitation[]
+  Layout              Layout           @relation(fields: [layout_id], references: [layout_id], onDelete: Cascade)
+  Organizer           User             @relation(fields: [organizer_id], references: [user_id])
+  PartyGuests         PartyGuest[]
+  PartyHosts          PartyHost[]
+  PartyMoment         PartyMoment[]
+}
 
-  Organizer   User         @relation(fields: [organizer_id], references: [user_id])
-  Layout      Layout       @relation(fields: [layout_id], references: [layout_id])
-  PartyGuests PartyGuest[]
-  PartyHosts  PartyHost[]
+model CalendarEvent {
+  event_id          Int      @id @default(autoincrement())
+  party_id          Int
+  event_name        String
+  event_start       DateTime
+  event_end         DateTime
+  google_event_id   String?
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+  event_description String?
+  event_location    String?
+  Party             Party    @relation(fields: [party_id], references: [party_id])
 }
 
 model PartyGuest {
-  guest_id      Int         @id @default(autoincrement())
   party_id      Int
-  guest_name    String
   guest_status  GuestStatus @default(PENDING)
-  guest_email   String?
-  guest_phone   String?
-  guest_notes   String?
-  guest_avatar  String?
-  guest_seat_id Int?
   created_at    DateTime    @default(now())
   updated_at    DateTime    @updatedAt
-
-  Party      Party       @relation(fields: [party_id], references: [party_id])
-  Guest_seat LayoutItem? @relation(fields: [guest_seat_id], references: [layout_item_id])
+  guest_email   String?
+  guest_name    String
+  guest_notes   String?
+  guest_phone   String?
+  guest_avatar  String?
+  guest_seat_id Int?        @unique
+  guest_id      Int         @id @default(autoincrement())
+  Guest_seat    LayoutItem? @relation(fields: [guest_seat_id], references: [layout_item_id], onDelete: SetNull)
+  Party         Party       @relation(fields: [party_id], references: [party_id], onDelete: Cascade)
 }
 
 model PartyHost {
@@ -101,9 +163,19 @@ model PartyHost {
   host_id       Int
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
+  Host          User     @relation(fields: [host_id], references: [user_id])
+  Party         Party    @relation(fields: [party_id], references: [party_id])
+}
 
-  Party Party @relation(fields: [party_id], references: [party_id])
-  Host  User  @relation(fields: [host_id], references: [user_id])
+model HostInvitation {
+  invitation_id Int                  @id @default(autoincrement())
+  name          String
+  email         String
+  party_id      Int
+  created_at    DateTime             @default(now())
+  updated_at    DateTime             @updatedAt
+  status        HostInvitationStatus @default(PENDING)
+  Party         Party                @relation(fields: [party_id], references: [party_id])
 }
 
 enum UserRole {
@@ -121,4 +193,10 @@ enum GuestStatus {
   ACCEPTED
   DECLINED
   PENDING
+}
+
+enum HostInvitationStatus {
+  PENDING
+  SENT
+  ACCEPTED
 }
