@@ -87,8 +87,9 @@ router.post("/refresh-token", async (req, res) => {
 
     res.cookie("access_token", newAccessToken, {
       httpOnly: true,
-      secure: false,
+      secure: true,
       sameSite: "lax",
+      domain: ".juno.com",
       path: "/",
       maxAge: 24 * 60 * 60 * 1000,
     });
@@ -130,14 +131,16 @@ router.post("/signUp", async (req, res) => {
 
     res.cookie("access_token", accessToken, {
       httpOnly: true,
-      secure: false,
+      secure: true,
+      domain: ".juno.com",
       sameSite: "lax",
       path: "/",
       maxAge: 24 * 60 * 60 * 1000, // 1 day
     });
     res.cookie("refresh_token", refreshToken, {
       httpOnly: true,
-      secure: false,
+      secure: true,
+      domain: ".juno.com",
       sameSite: "strict",
       path: "/",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
@@ -179,17 +182,19 @@ router.post("/loginWithGoogle", async (req, res) => {
 
     res.cookie("access_token", newAccessToken, {
       httpOnly: true,
-      secure: false,
+      secure: true, // Debe estar en true si estás usando HTTPS
       sameSite: "lax",
+      domain: ".juno.com",
       path: "/",
-      maxAge: 24 * 60 * 60 * 1000, // 1 day
+      maxAge: 24 * 60 * 60 * 1000,
     });
     res.cookie("refresh_token", refreshToken, {
       httpOnly: true,
-      secure: false,
+      secure: true,
       sameSite: "strict",
+      domain: ".juno.com",
       path: "/",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     res.status(200).json({ message: "Login successful" });
