@@ -43,16 +43,18 @@ router.post("/login", async (req, res) => {
 
     res.cookie("access_token", accessToken, {
       httpOnly: true,
-      secure: false,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
+      domain: ".juno.com.ar",
       maxAge: 24 * 60 * 60 * 1000, // 1 day
     });
     res.cookie("refresh_token", refreshToken, {
       httpOnly: true,
-      secure: false,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
       path: "/",
+      domain: ".juno.com.ar",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
     });
     res.status(200).json({ message: "Login successful" });
@@ -87,9 +89,9 @@ router.post("/refresh-token", async (req, res) => {
 
     res.cookie("access_token", newAccessToken, {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      domain: ".juno.com",
+      domain: ".juno.com.ar",
       path: "/",
       maxAge: 24 * 60 * 60 * 1000,
     });
@@ -131,16 +133,16 @@ router.post("/signUp", async (req, res) => {
 
     res.cookie("access_token", accessToken, {
       httpOnly: true,
-      secure: true,
-      domain: ".juno.com",
+      secure: process.env.NODE_ENV === "production",
+      domain: ".juno.com.ar",
       sameSite: "lax",
       path: "/",
       maxAge: 24 * 60 * 60 * 1000, // 1 day
     });
     res.cookie("refresh_token", refreshToken, {
       httpOnly: true,
-      secure: true,
-      domain: ".juno.com",
+      secure: process.env.NODE_ENV === "production",
+      domain: ".juno.com.ar",
       sameSite: "strict",
       path: "/",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
@@ -182,17 +184,17 @@ router.post("/loginWithGoogle", async (req, res) => {
 
     res.cookie("access_token", newAccessToken, {
       httpOnly: true,
-      secure: true, // Debe estar en true si estás usando HTTPS
+      secure: process.env.NODE_ENV === "production", // Debe estar en true si estás usando HTTPS
       sameSite: "lax",
-      domain: ".juno.com",
+      domain: ".juno.com.ar",
       path: "/",
       maxAge: 24 * 60 * 60 * 1000,
     });
     res.cookie("refresh_token", refreshToken, {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      domain: ".juno.com",
+      domain: ".juno.com.ar",
       path: "/",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });

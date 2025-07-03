@@ -4,10 +4,10 @@
   "main": "app.ts",
   "scripts": {
     "build": "tsc",
-    "start": "npx prisma migrate deploy && node dist/app.js",
+    "start": "NODE_ENV=production && npx prisma migrate deploy && node dist/app.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate deploy",
-    "dev": "nodemon --files src/app.ts"
+    "dev": "NODE_ENV=dev && nodemon --files src/app.ts"
   },
   "author": "",
   "license": "ISC",
