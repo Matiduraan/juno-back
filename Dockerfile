@@ -5,7 +5,8 @@ FROM node:20-slim AS builder
 WORKDIR /app
 
 # Install OS dependencies required for Prisma
-RUN apt-get update && apt-get install -y openssl
+
+RUN apk add --no-cache openssl
 
 # Copy dependencies files
 COPY package.json package-lock.json ./
