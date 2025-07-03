@@ -4,7 +4,7 @@ import { google } from "googleapis";
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID!;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET!;
-const REDIRECT_URI = `${process.env.APP_URL}/google/callback`;
+const REDIRECT_URI = `${process.env.API_URL}/google/callback`;
 
 const db = new PrismaClient();
 
