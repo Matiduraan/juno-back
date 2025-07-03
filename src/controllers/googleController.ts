@@ -1,11 +1,10 @@
 // src/google.ts
 import { PrismaClient } from "@prisma/client";
 import { google } from "googleapis";
-import { linkUserWithGoogle } from "./authController";
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID!;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET!;
-const REDIRECT_URI = "http://localhost:3000/google/callback";
+const REDIRECT_URI = `${process.env.APP_URL}/google/callback`;
 
 const db = new PrismaClient();
 
