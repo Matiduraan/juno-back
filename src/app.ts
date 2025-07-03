@@ -28,7 +28,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-app.use("/test", testRouter);
+app.use("/", testRouter);
 app.use("/layout", layoutRouter);
 app.use("/party", partyRouter);
 app.use("/user", userRouter);
