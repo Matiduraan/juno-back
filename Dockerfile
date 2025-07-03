@@ -18,7 +18,6 @@ COPY . .
 
 # Generate Prisma client and run migrations
 RUN npx prisma generate
-RUN npx prisma migrate deploy
 
 # Compile TypeScript
 RUN npm run build
@@ -42,4 +41,4 @@ ENV NODE_ENV=production
 
 EXPOSE 3000
 
-CMD ["node", "dist/app.js"]
+CMD ["npm", "start"]
