@@ -12,6 +12,14 @@ export const getUserParties = (
   sort: "asc" | "desc" = "desc",
   name?: string
 ) => {
+  console.log("getUserParties called with:", {
+    userId,
+    offset,
+    limit,
+    sort_by,
+    sort,
+    name,
+  });
   const data = db.party.findMany({
     where: {
       OR: [
@@ -26,7 +34,6 @@ export const getUserParties = (
           },
         },
       ],
-      // name ? { party_name: { contains: name, mode: "insensitive" } } : {},
       party_name: name ? { contains: name, mode: "insensitive" } : undefined,
     },
     include: {
@@ -58,6 +65,7 @@ export const getUserParties = (
           },
         },
       ],
+      party_name: name ? { contains: name, mode: "insensitive" } : undefined,
     },
   });
   return Promise.all([data, pagination]).then(([data, total]) => ({
