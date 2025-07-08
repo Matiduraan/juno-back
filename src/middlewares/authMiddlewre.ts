@@ -32,6 +32,7 @@ const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
     // If authenticated, proceed to the next middleware or route handler
     next();
   } catch (error) {
+    console.error("Authentication error:", error);
     res.status(401).json({ error: "Unauthorized" });
   }
 };

@@ -46,7 +46,8 @@ router.post("/login", async (req, res) => {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      domain: ".juno.com.ar",
+      domain:
+        process.env.NODE_ENV === "production" ? ".juno.com.ar" : undefined,
       maxAge: 24 * 60 * 60 * 1000, // 1 day
     });
     res.cookie("refresh_token", refreshToken, {
@@ -54,7 +55,8 @@ router.post("/login", async (req, res) => {
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
       path: "/",
-      domain: ".juno.com.ar",
+      domain:
+        process.env.NODE_ENV === "production" ? ".juno.com.ar" : undefined,
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
     });
     res.status(200).json({ message: "Login successful" });
@@ -85,13 +87,12 @@ router.post("/refresh-token", async (req, res) => {
       { expiresIn: "1h" }
     );
 
-    console.log("New access token generated:", newAccessToken);
-
     res.cookie("access_token", newAccessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      domain: ".juno.com.ar",
+      domain:
+        process.env.NODE_ENV === "production" ? ".juno.com.ar" : undefined,
       path: "/",
       maxAge: 24 * 60 * 60 * 1000,
     });
@@ -134,7 +135,8 @@ router.post("/signUp", async (req, res) => {
     res.cookie("access_token", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      domain: ".juno.com.ar",
+      domain:
+        process.env.NODE_ENV === "production" ? ".juno.com.ar" : undefined,
       sameSite: "lax",
       path: "/",
       maxAge: 24 * 60 * 60 * 1000, // 1 day
@@ -142,7 +144,8 @@ router.post("/signUp", async (req, res) => {
     res.cookie("refresh_token", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      domain: ".juno.com.ar",
+      domain:
+        process.env.NODE_ENV === "production" ? ".juno.com.ar" : undefined,
       sameSite: "strict",
       path: "/",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
@@ -186,7 +189,8 @@ router.post("/loginWithGoogle", async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production", // Debe estar en true si estás usando HTTPS
       sameSite: "lax",
-      domain: ".juno.com.ar",
+      domain:
+        process.env.NODE_ENV === "production" ? ".juno.com.ar" : undefined,
       path: "/",
       maxAge: 24 * 60 * 60 * 1000,
     });
@@ -194,7 +198,8 @@ router.post("/loginWithGoogle", async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      domain: ".juno.com.ar",
+      domain:
+        process.env.NODE_ENV === "production" ? ".juno.com.ar" : undefined,
       path: "/",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });

@@ -83,6 +83,8 @@ export const getParty = async (partyId: number) => {
       party_end_time: true,
       party_location_name: true,
       party_location_link: true,
+      party_dress_code: true,
+      party_special_instructions: true,
       organizer_id: true,
       google_calendar_id: true,
       PartyHosts: {
@@ -149,6 +151,8 @@ export const createParty = async (data: CreatePartyInput) => {
       party_location_name: data.partyLocationName,
       party_location_link: data.partyLocationLink,
       party_start_time: data.partyStartTime,
+      party_dress_code: data.partyDressCode,
+      party_special_instructions: data.partySpecialInstructions,
       party_end_time: data.partyEndTime,
       Organizer: {
         connect: {
@@ -209,6 +213,8 @@ export const updateParty = async (
       party_date: dayjs(data.partyDate, "YYYY-MM-DD").toDate(),
       party_location_name: data.partyLocationName,
       party_location_link: data.partyLocationLink,
+      party_dress_code: data.partyDressCode,
+      party_special_instructions: data.partySpecialInstructions,
       party_start_time: data.partyStartTime,
       party_end_time: data.partyEndTime,
     },

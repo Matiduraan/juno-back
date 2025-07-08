@@ -30,7 +30,10 @@ export function getAuthUrl(
   return oauth2Client.generateAuthUrl({
     access_type: "offline",
     prompt: "consent",
-    scope: SCOPES,
+    scope:
+      action !== "login"
+        ? SCOPES
+        : ["https://www.googleapis.com/auth/userinfo.profile"],
     redirect_uri: REDIRECT_URI,
     state: JSON.stringify({ userId, action }),
   });

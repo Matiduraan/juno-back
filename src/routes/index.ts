@@ -8,6 +8,7 @@ import calendarRouter from "./calendar";
 import MomentRouter from "./moment";
 import hostInvitationsRouter from "./hostInvitations";
 import testRouter from "./test";
+import invitationsRouter from "./invitations";
 
 export {
   partyRouter,
@@ -19,4 +20,5 @@ export {
   MomentRouter,
   hostInvitationsRouter,
   testRouter,
+  invitationsRouter,
 };

@@ -4,6 +4,7 @@ import {
   addPartyGuest,
   deletePartyGuest,
   exportGuestsInfo,
+  getPartyGuestById,
   getPartyGuests,
   getPartyGuestsCountByStatus,
   processGuestsFile,
@@ -32,6 +33,7 @@ import {
   inviteHosts,
 } from "../controllers/hostInvitationsController";
 import { HostInvitationStatus } from "@prisma/client";
+import partyValidationMiddleware from "../middlewares/partyValidationMiddleware";
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
@@ -55,6 +57,8 @@ router.post("/", async (req, res) => {
     party_end_time,
     hosts,
     layoutId,
+    party_dress_code,
+    party_special_instructions,
   } = req.body;
   if (
     !party_name ||
@@ -77,6 +81,8 @@ router.post("/", async (req, res) => {
       partyStartTime: party_start_time,
       partyEndTime: party_end_time,
       layoutId: layoutId,
+      partyDressCode: party_dress_code,
+      partySpecialInstructions: party_special_instructions,
     });
     try {
       if (hosts && Array.isArray(hosts) && hosts.length > 0) {
@@ -655,6 +661,57 @@ router.post("/layout", async (req, res) => {
   }
 });
 
+router.get("/:partyId/guests/:guestId", async (req, res) => {
+  const { guestId, partyId } = req.params;
+  if (
+    !guestId ||
+    isNaN(parseInt(guestId)) ||
+    !partyId ||
+    isNaN(parseInt(partyId))
+  ) {
+    res.status(400).json({ error: "Invalid guest ID" });
+    return;
+  }
+  try {
+    const guest = await getPartyGuestById(parseInt(partyId), parseInt(guestId));
+    if (!guest) {
+      res.status(404).json({ error: "No guest found" });
+      return;
+    }
+    res.status(200).json(guest);
+  } catch (error) {
+    console.error("Error fetching guest:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post(
+  "/:partyId/guests/:guestId/confirmation",
+  partyValidationMiddleware,
+  async (req, res) => {
+    const { partyId, guestId } = req.params;
+    if (
+      !partyId ||
+      isNaN(parseInt(partyId)) ||
+      !guestId ||
+      isNaN(parseInt(guestId))
+    ) {
+      res.status(400).json({ error: "Invalid party or guest ID" });
+      return;
+    }
+    try {
+      const updatedGuest = await updateGuestStatus(
+        parseInt(guestId),
+        "ACCEPTED"
+      );
+      res.status(200).json(updatedGuest);
+    } catch (error) {
+      console.error("Error confirming guest:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
 router.put("/:partyId", async (req, res) => {
   const { partyId } = req.params;
   if (!partyId || isNaN(parseInt(partyId))) {
@@ -668,6 +725,8 @@ router.put("/:partyId", async (req, res) => {
     partyLocationLink,
     partyStartTime,
     partyEndTime,
+    partyDressCode,
+    partySpecialInstructions,
   } = req.body;
   if (
     !partyName ||
@@ -697,6 +756,8 @@ router.put("/:partyId", async (req, res) => {
       partyLocationLink,
       partyStartTime,
       partyEndTime,
+      partyDressCode,
+      partySpecialInstructions,
     });
 
     res.status(200).json(updatedParty);

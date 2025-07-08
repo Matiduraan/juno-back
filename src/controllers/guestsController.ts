@@ -4,6 +4,30 @@ import { GUEST_SORTABLE_FIELDS } from "../constants/guest";
 
 const db = new PrismaClient();
 
+export const getPartyGuestById = async (partyId: number, guestId: number) => {
+  return await db.partyGuest.findFirst({
+    where: {
+      party_id: partyId,
+      guest_id: guestId,
+    },
+    select: {
+      guest_id: true,
+      guest_email: true,
+      guest_name: true,
+      guest_phone: true,
+      guest_status: true,
+      guest_notes: true,
+      guest_avatar: true,
+      guest_seat_id: true,
+      Guest_seat: {
+        select: {
+          layout_item_name: true,
+        },
+      },
+    },
+  });
+};
+
 export const getPartyGuests = async (
   partyId: number,
   offset = 0,
@@ -127,12 +151,14 @@ export const deletePartyGuest = (guestId: number, partyId: number) => {
 };
 
 export const updateGuestStatus = (guestId: number, status: GuestStatus) => {
+  const confirmed = status === "ACCEPTED" || status === "DECLINED";
   return db.partyGuest.update({
     where: {
       guest_id: guestId,
     },
     data: {
       guest_status: status,
+      confirmed_at: confirmed ? new Date() : null,
     },
   });
 };

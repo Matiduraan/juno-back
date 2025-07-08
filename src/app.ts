@@ -9,6 +9,7 @@ import {
   MomentRouter,
   hostInvitationsRouter,
   testRouter,
+  invitationsRouter,
 } from "./routes";
 import bodyParser from "body-parser";
 import cors from "cors";
@@ -37,6 +38,7 @@ app.use("/google", googleRouter);
 app.use("/calendar", calendarRouter);
 app.use("/moment", MomentRouter);
 app.use("/host-invitations", hostInvitationsRouter);
+app.use("/invitations", invitationsRouter);
 
 app.listen(PORT, (error) => {
   if (error) {

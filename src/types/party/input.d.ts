@@ -4,6 +4,8 @@ type CreatePartyInput = {
   partyDate: string;
   partyLocationName: string;
   partyLocationLink?: string;
+  partyDressCode?: string;
+  partySpecialInstructions?: string;
   partyStartTime: string;
   partyEndTime: string;
   layoutId?: number;
@@ -18,6 +20,8 @@ type UpdatePartyInput = {
   partyLocationLink?: string;
   partyStartTime: string;
   partyEndTime: string;
+  partyDressCode?: string;
+  partySpecialInstructions?: string;
 };
 
 type PartyHostInput = {
