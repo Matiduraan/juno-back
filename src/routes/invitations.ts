@@ -111,12 +111,10 @@ router.post(
         extension as "pdf" | "png" | "jpg",
         file.mimetype
       );
-      console.log(fileLink);
+      fs.unlinkSync(file.path); // Delete the file after upload
       res.status(200).json({
         message: "File uploaded successfully",
-        fileLink: file
-          ? `${process.env.S3_ENDPOINT}/party-invitations/invitation-${partyId}.${extension}}`
-          : null,
+        fileLink: fileLink.invitation_file_link,
       });
     } catch (error) {
       console.error("Error uploading file:", error);
