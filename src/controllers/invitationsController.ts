@@ -45,7 +45,7 @@ export const uploadInvitationFile = async (
       invitation_file_extension: extension,
       email_body: "",
       email_subject: "",
-      message_content: "",
+      message_option: 0,
     },
   });
 };
@@ -71,25 +71,24 @@ export const saveEmail = async ({
       party_id: partyId,
       email_body: body,
       email_subject: subject,
-      message_content: "",
     },
   });
 };
 
 export const saveInvitationMessage = async ({
-  messageContent,
+  messageOption,
   partyId,
 }: SaveInvitationMessageInput) => {
   return await db.partyInvitation.upsert({
     where: { party_id: partyId },
     update: {
-      message_content: messageContent,
+      message_option: messageOption,
     },
     create: {
       party_id: partyId,
       email_body: "",
       email_subject: "",
-      message_content: messageContent,
+      message_option: messageOption,
     },
   });
 };

@@ -1,11 +1,9 @@
-import { PrismaClient } from "@prisma/client";
+import { PartyGuest, PrismaClient } from "@prisma/client";
 import dayjs from "dayjs";
 import { sendEmail } from "../utils/email";
 import {
-  getDocumentMessageInput,
-  getImageMessageInput,
-  getTextMessageInput,
   sendWhatsappMessage,
+  getTemplateMessageInput,
 } from "../utils/whatsapp";
 
 const db = new PrismaClient();
@@ -83,36 +81,68 @@ export const sendEmailInvitation = async (
   );
 };
 
+const whatsappTemplates = (
+  guestName: string,
+  partyName: string,
+  inviteLink: string,
+  inviteToken: string
+) => [
+  {
+    name: "invite",
+    languageCode: "en",
+    bodyParameters: [guestName, partyName, inviteLink],
+    buttonUrlVariable: inviteToken,
+  },
+  {
+    name: "invite_formal",
+    languageCode: "en",
+    bodyParameters: [guestName, partyName, inviteLink],
+    buttonUrlVariable: inviteToken,
+  },
+  {
+    name: "invite_informal",
+    languageCode: "en",
+    bodyParameters: [guestName, partyName, inviteLink],
+    buttonUrlVariable: inviteToken,
+  },
+];
+
 export const sendWhatsappInvitation = async (
   partyId: number,
   phoneNumber: string,
   guestId: number,
-  customBody?: string
+  customTemplate?: number
 ) => {
+  console.log(
+    "Party Invitation:",
+    partyId,
+    phoneNumber,
+    guestId,
+    customTemplate
+  );
   const partyInvitation = await db.partyInvitation.findUnique({
     where: { party_id: partyId },
   });
 
-  if (!partyInvitation || !partyInvitation.message_content) {
+  if (!partyInvitation || partyInvitation.message_option === null) {
     throw new Error("Party invitation not found");
   }
-  const body = customBody || partyInvitation.message_content;
+  const template = customTemplate || partyInvitation.message_option;
 
   const replacements = await generateMessageReplacements(partyId, guestId);
-  const whatsappBody = replacePlaceholders(body, replacements);
-
-  const messageData = partyInvitation.invitation_file_link
-    ? partyInvitation.invitation_file_extension === "pdf"
-      ? getDocumentMessageInput(
-          phoneNumber,
-          partyInvitation.invitation_file_link,
-          whatsappBody
-        )
-      : getImageMessageInput(
-          phoneNumber,
-          partyInvitation.invitation_file_link,
-          whatsappBody
-        )
-    : getTextMessageInput(phoneNumber, whatsappBody);
+  // const whatsappBody = replacePlaceholders(body, replacements);
+  const templateData = whatsappTemplates(
+    replacements.guest_name,
+    replacements.party_name,
+    replacements.guest_confirmation_link,
+    replacements.guest_confirmation_link.split("token=")[1]
+  )[template];
+  const messageData = getTemplateMessageInput(
+    phoneNumber,
+    templateData.name,
+    templateData.bodyParameters,
+    templateData.buttonUrlVariable,
+    templateData.languageCode
+  );
   return await sendWhatsappMessage(messageData);
 };

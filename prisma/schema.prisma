@@ -188,7 +188,7 @@ model PartyInvitation {
   party_id                  Int      @unique
   email_body                String?  @default("")
   email_subject             String?  @default("")
-  message_content           String?  @default("")
+  message_option            Int?     @default(0)
   invitation_file_link      String?
   invitation_file_extension String?
   created_at                DateTime @default(now())

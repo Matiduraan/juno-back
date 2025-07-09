@@ -164,14 +164,14 @@ router.post(
       res.status(400).json({ error: "Invalid party ID" });
       return;
     }
-    const { messageContent } = req.body;
-    if (!messageContent) {
-      res.status(400).json({ error: "Missing required field: messageContent" });
+    const { messageOption } = req.body;
+    if (!messageOption) {
+      res.status(400).json({ error: "Missing required field: messageOption" });
       return;
     }
     try {
       const updatedInvitation = await saveInvitationMessage({
-        messageContent,
+        messageOption,
         partyId,
       });
       res.status(200).json(updatedInvitation);
@@ -225,7 +225,7 @@ router.post(
       res.status(400).json({ error: "Invalid party ID" });
       return;
     }
-    const { phone, body } = req.body;
+    const { phone, option } = req.body;
     if (!phone) {
       res.status(400).json({ error: "Missing required field: phone" });
       return;
@@ -235,14 +235,14 @@ router.post(
         partyId,
         phone,
         parseInt(process.env.MOCK_GUEST_ID ?? "1"),
-        body
+        option
       );
-      res.status(200).json({ message: "Test email sent successfully" });
+      res.status(200).json({ message: "Test message sent successfully" });
     } catch (error) {
-      console.error("Error fetching invitation for test email:", error);
+      console.error("Error fetching invitation for test message:", error);
       res
         .status(500)
-        .json({ error: "Failed to fetch invitation for test email" });
+        .json({ error: "Failed to fetch invitation for test message" });
     }
   }
 );

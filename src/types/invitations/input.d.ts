@@ -5,6 +5,6 @@ type SaveInvitationEmailInput = {
 };
 
 type SaveInvitationMessageInput = {
-  messageContent: string;
+  messageOption: number;
   partyId: number;
 };
