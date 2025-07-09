@@ -307,7 +307,6 @@ router.get("/:partyId/guests/status", async (req, res) => {
       return;
     }
     const guests = await getPartyGuestsCountByStatus(parseInt(partyId));
-    console.log("Guests by status:", guests);
     res.status(200).json(guests);
   } catch (error) {
     console.error("Error fetching guests:", error);

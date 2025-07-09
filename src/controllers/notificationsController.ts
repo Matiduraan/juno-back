@@ -5,6 +5,7 @@ import {
   sendWhatsappMessage,
   getTemplateMessageInput,
 } from "../utils/whatsapp";
+import { sendWhatsappTemplateMessage } from "../utils/twilio";
 
 const db = new PrismaClient();
 
@@ -89,18 +90,21 @@ const whatsappTemplates = (
 ) => [
   {
     name: "invite",
+    twilioId: "HX452c15da09e9b261eb118826fdc754c6",
     languageCode: "en",
     bodyParameters: [guestName, partyName, inviteLink],
     buttonUrlVariable: inviteToken,
   },
   {
     name: "invite_formal",
+    twilioId: "HXffe2b022fd336a8b514e01db260ff1e5",
     languageCode: "en",
     bodyParameters: [guestName, partyName, inviteLink],
     buttonUrlVariable: inviteToken,
   },
   {
     name: "invite_informal",
+    twilioId: "HXcf8df425a09168f8f0eea03bcfb20268",
     languageCode: "en",
     bodyParameters: [guestName, partyName, inviteLink],
     buttonUrlVariable: inviteToken,
@@ -113,13 +117,6 @@ export const sendWhatsappInvitation = async (
   guestId: number,
   customTemplate?: number
 ) => {
-  console.log(
-    "Party Invitation:",
-    partyId,
-    phoneNumber,
-    guestId,
-    customTemplate
-  );
   const partyInvitation = await db.partyInvitation.findUnique({
     where: { party_id: partyId },
   });
@@ -137,12 +134,18 @@ export const sendWhatsappInvitation = async (
     replacements.guest_confirmation_link,
     replacements.guest_confirmation_link.split("token=")[1]
   )[template];
-  const messageData = getTemplateMessageInput(
-    phoneNumber,
-    templateData.name,
-    templateData.bodyParameters,
-    templateData.buttonUrlVariable,
-    templateData.languageCode
-  );
-  return await sendWhatsappMessage(messageData);
+  // const messageData = getTemplateMessageInput(
+  //   phoneNumber,
+  //   templateData.name,
+  //   templateData.bodyParameters,
+  //   templateData.buttonUrlVariable,
+  //   templateData.languageCode
+  // );
+  // return await sendWhatsappMessage(messageData);
+  return await sendWhatsappTemplateMessage({
+    to: phoneNumber,
+    templateName: templateData.twilioId,
+    bodyVariables: templateData.bodyParameters,
+    buttonVariable: templateData.buttonUrlVariable,
+  });
 };
