@@ -12,6 +12,7 @@ export async function getUserDetails(userId: number) {
       email: true,
       user_role: true,
       google_id: true,
+      verified: true,
     },
   });
 }

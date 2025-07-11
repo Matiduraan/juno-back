@@ -8,21 +8,24 @@ datasource db {
 }
 
 model User {
-  user_id            Int                 @id @default(autoincrement())
-  email              String              @unique
-  created_at         DateTime            @default(now())
-  updated_at         DateTime            @updatedAt
-  user_role          UserRole            @default(PLANNER)
-  password           String
-  google_id          String?             @unique
-  first_name         String
-  last_name          String
-  GoogleRefreshToken GoogleRefreshToken?
-  Layout             Layout[]
-  Party              Party[]
-  PartyHost          PartyHost[]
-  PartyMomentType    PartyMomentType[]
-  RefreshToken       RefreshToken[]
+  user_id                  Int                   @id @default(autoincrement())
+  email                    String                @unique
+  created_at               DateTime              @default(now())
+  updated_at               DateTime              @updatedAt
+  user_role                UserRole              @default(PLANNER)
+  password                 String
+  google_id                String?               @unique
+  first_name               String
+  last_name                String
+  verified                 Boolean               @default(false)
+  email_verification_token String?               @unique @default(cuid())
+  GoogleRefreshToken       GoogleRefreshToken?
+  Layout                   Layout[]
+  Party                    Party[]
+  PartyHost                PartyHost[]
+  PartyMomentType          PartyMomentType[]
+  RefreshToken             RefreshToken[]
+  forgotPasswordToken      forgotPasswordToken[]
 }
 
 model RefreshToken {
@@ -42,6 +45,16 @@ model GoogleRefreshToken {
   token      String   @unique
   user_id    Int      @unique
   created_at DateTime @default(now())
+  user       User     @relation(fields: [user_id], references: [user_id])
+}
+
+model forgotPasswordToken {
+  token_id   Int      @id @default(autoincrement())
+  token      String   @unique @default(cuid())
+  user_id    Int
+  created_at DateTime @default(now())
+  expires_at DateTime
+  revoked    Boolean  @default(false)
   user       User     @relation(fields: [user_id], references: [user_id])
 }
 
