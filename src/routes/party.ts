@@ -124,6 +124,19 @@ router.get("/:partyId", async (req, res) => {
   }
 });
 
+router.get(
+  "/:partyId/validatePermission",
+  partyValidationMiddleware,
+  async (req, res) => {
+    const { partyId } = req.params;
+    if (!partyId || isNaN(parseInt(partyId))) {
+      res.status(400).json({ error: "Invalid party ID" });
+      return;
+    }
+    res.status(200).json({ valid: true });
+  }
+);
+
 router.get("/:partyId/guests", async (req, res) => {
   const { partyId } = req.params;
   const { offset = 0, limit = 50, status, query, sort, sortBy } = req.query;

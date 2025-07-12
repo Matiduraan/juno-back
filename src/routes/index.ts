@@ -1,4 +1,3 @@
-// export default as guestsRouter from './guests'
 import partyRouter from "./party";
 import layoutRouter from "./layout";
 import userRouter from "./user";
@@ -9,6 +8,7 @@ import MomentRouter from "./moment";
 import hostInvitationsRouter from "./hostInvitations";
 import testRouter from "./test";
 import invitationsRouter from "./invitations";
+import subscriptionRouter from "./subs";
 
 export {
   partyRouter,
@@ -21,4 +21,5 @@ export {
   hostInvitationsRouter,
   testRouter,
   invitationsRouter,
+  subscriptionRouter,
 };

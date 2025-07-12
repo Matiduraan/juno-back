@@ -1,6 +1,6 @@
 import { Party, PrismaClient } from "@prisma/client";
 import { layoutIdOnPartyCreation } from "./layoutController";
-import dayjs, { Dayjs } from "dayjs";
+import dayjs from "dayjs";
 
 const db = new PrismaClient();
 
@@ -8,7 +8,7 @@ export const getUserParties = (
   userId: number,
   offset: number,
   limit = 50,
-  sort_by: keyof Party = "party_date",
+  sort_by: keyof Party = "created_at",
   sort: "asc" | "desc" = "desc",
   name?: string
 ) => {

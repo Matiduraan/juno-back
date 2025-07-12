@@ -26,6 +26,7 @@ model User {
   PartyMomentType          PartyMomentType[]
   RefreshToken             RefreshToken[]
   forgotPasswordToken      forgotPasswordToken[]
+  userSubscription         userSubscription[]
 }
 
 model RefreshToken {
@@ -210,6 +211,50 @@ model PartyInvitation {
   Party Party @relation(fields: [party_id], references: [party_id])
 }
 
+model subcriptionPlan {
+  plan_id            Int                @id @default(autoincrement())
+  plan_name          String
+  plan_description   String?
+  plan_price_monthly Float
+  plan_price_yearly  Float
+  created_at         DateTime           @default(now())
+  updated_at         DateTime           @updatedAt
+  planFeature        planFeature[]
+  userSubscription   userSubscription[]
+}
+
+model planFeature {
+  feature_id          Int      @id @default(autoincrement())
+  plan_id             Int
+  feature_name        String
+  feature_description String?
+  feature_key         String   @unique
+  feature_value       Int?
+  feature_enabled     Boolean  @default(false)
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  SubscriptionPlan subcriptionPlan @relation(fields: [plan_id], references: [plan_id])
+}
+
+model userSubscription {
+  user_subscription_id           Int                         @id @default(autoincrement())
+  user_id                        Int
+  plan_id                        Int
+  subscription_status            String                      @default("active")
+  subcription_price              Float
+  subcription_payment_interval   SubscriptionPaymentInterval @default(MONTHLY)
+  subscription_next_renewal_date DateTime
+  subscription_trial_end_date    DateTime?
+  subscription_start             DateTime
+  subscription_end               DateTime?
+  created_at                     DateTime                    @default(now())
+  updated_at                     DateTime                    @updatedAt
+
+  SubscriptionPlan subcriptionPlan @relation(fields: [plan_id], references: [plan_id])
+  User             User            @relation(fields: [user_id], references: [user_id])
+}
+
 enum UserRole {
   PLANNER
   HOST
@@ -218,6 +263,11 @@ enum UserRole {
 enum LayoutType {
   PARTY
   MODEL
+}
+
+enum SubscriptionPaymentInterval {
+  MONTHLY
+  YEARLY
 }
 
 enum GuestStatus {

@@ -93,7 +93,6 @@ router.get("/layouts", async (req, res) => {
       parseInt(limit?.toString() || "50")
     );
 
-    console.log("Fetched user layouts:", layouts);
     res.status(200).json(layouts);
   } catch (error) {
     console.error("Error fetching user layouts:", error);

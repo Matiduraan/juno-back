@@ -19,5 +19,13 @@ export const validatePartyAccess = async (partyId: number, userId?: number) => {
       ],
     },
   });
+  console.log(
+    "Party access validation for user:",
+    userId,
+    "Party:",
+    partyId,
+    "Result:",
+    !!party
+  );
   return !!party;
 };

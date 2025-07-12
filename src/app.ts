@@ -10,6 +10,7 @@ import {
   hostInvitationsRouter,
   testRouter,
   invitationsRouter,
+  subscriptionRouter,
 } from "./routes";
 import bodyParser from "body-parser";
 import cors from "cors";
@@ -39,6 +40,7 @@ app.use("/calendar", calendarRouter);
 app.use("/moment", MomentRouter);
 app.use("/host-invitations", hostInvitationsRouter);
 app.use("/invitations", invitationsRouter);
+app.use("/subscription", subscriptionRouter);
 
 app.listen(PORT, (error) => {
   if (error) {
