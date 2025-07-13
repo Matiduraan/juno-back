@@ -149,3 +149,108 @@ export const sendWhatsappInvitation = async (
     buttonVariable: templateData.buttonUrlVariable,
   });
 };
+
+export const sendForgotPasswordEmail = async (email: string, token: string) => {
+  const emailBody = `
+  <!DOCTYPE html>
+  <html lang="es">
+    <body style="margin: 0; padding: 0; background-color: #f4f4f4;">
+      <table cellpadding="0" cellspacing="0" width="100%" bgcolor="#f4f4f4" style="font-family: Arial, sans-serif;">
+        <tr>
+          <td>
+            <table align="center" cellpadding="0" cellspacing="0" width="600" bgcolor="#ffffff" style="margin: 20px auto; border-radius: 8px; padding: 30px;">
+              <tr>
+                <td>
+                  <h2 style="color: #333333;">Recuperar tu contraseña</h2>
+                  <p style="color: #333333; font-size: 16px;">Hola,</p>
+                  <p style="color: #333333; font-size: 16px;">Recibimos una solicitud para restablecer tu contraseña de Juno.</p>
+                  <p style="color: #333333; font-size: 16px;">Hacé clic en el siguiente botón para crear una nueva contraseña:</p>
+                  <p style="text-align: center;">
+                    <a href="https://juno.com.ar/update-password?token=${token}"
+                      style="background-color: #4f46e5; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold; margin-top: 10px;">
+                      Restablecer contraseña
+                    </a>
+                  </p>
+                  <p style="color: #555555; font-size: 14px;">Si no solicitaste este cambio, ignorá este mensaje.</p>
+                  <p style="color: #999999; font-size: 12px; margin-top: 30px;">© 2025 Juno · Este mensaje fue enviado automáticamente</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+  </html>
+  `;
+  const emailSubject = "Reset your password - Juno";
+
+  return await sendEmail(email, emailSubject, `<pre>${emailBody}</pre>`);
+};
+
+export const sendUpdatedPasswordEmail = async (email: string) => {
+  const emailBody = `
+  <!DOCTYPE html>
+  <html lang="es">
+    <body style="margin: 0; padding: 0; background-color: #f4f4f4;">
+      <table cellpadding="0" cellspacing="0" width="100%" bgcolor="#f4f4f4" style="font-family: Arial, sans-serif;">
+        <tr>
+          <td>
+            <table align="center" cellpadding="0" cellspacing="0" width="600" bgcolor="#ffffff" style="margin: 20px auto; border-radius: 8px; padding: 30px;">
+              <tr>
+                <td>
+                  <h2 style="color: #333333;">Contraseña actualizada</h2>
+                  <p style="color: #333333; font-size: 16px;">Hola,</p>
+                  <p style="color: #333333; font-size: 16px;">Tu contraseña ha sido actualizada correctamente.</p>
+                  <p style="color: #555555; font-size: 14px;">Si no realizaste este cambio, por favor contactanos inmediatamente.</p>
+                  <p style="color: #999999; font-size: 12px; margin-top: 30px;">© 2025 Juno · Este mensaje fue enviado automáticamente</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+  </html>
+  `;
+  const emailSubject = "Password updated - Juno";
+
+  return await sendEmail(email, emailSubject, `<pre>${emailBody}</pre>`);
+};
+
+export const sendAccountValidationEmail = async (
+  email: string,
+  token: string
+) => {
+  const emailBody = `
+  <!DOCTYPE html>
+  <html lang="es">
+    <body style="margin: 0; padding: 0; background-color: #f4f4f4;">
+      <table cellpadding="0" cellspacing="0" width="100%" bgcolor="#f4f4f4" style="font-family: Arial, sans-serif;">
+        <tr>
+          <td>
+            <table align="center" cellpadding="0" cellspacing="0" width="600" bgcolor="#ffffff" style="margin: 20px auto; border-radius: 8px; padding: 30px;">
+              <tr>
+                <td>
+                  <h2 style="color: #333333;">Validar tu cuenta</h2>
+                  <p style="color: #333333; font-size: 16px;">Hola,</p>
+                  <p style="color: #333333; font-size: 16px;">Hacé clic en el siguiente botón para validar tu cuenta:</p>
+                  <p style="text-align: center;">
+                    <a href="${process.env.API_URL}/auth/validate?token=${token}"
+                      style="background-color: #4f46e5; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold; margin-top: 10px;">
+                      Validar cuenta
+                    </a>
+                  </p>
+                  <p style="color: #999999; font-size: 12px; margin-top: 30px;">© 2025 Juno · Este mensaje fue enviado automáticamente</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+  </html>
+  `;
+  const emailSubject = "Validate your account - Juno";
+
+  return await sendEmail(email, emailSubject, `<pre>${emailBody}</pre>`);
+};

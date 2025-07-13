@@ -213,7 +213,6 @@ router.get("/:partyId/summaryMetrics", async (req, res) => {
   }
   try {
     const metrics = await getPartySummaryMetrics(parseInt(partyId));
-    console.log("Summary metrics:", metrics);
     res.status(200).json(metrics);
   } catch (error) {
     console.error("Error fetching summary metrics:", error);

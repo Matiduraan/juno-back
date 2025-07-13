@@ -10,7 +10,6 @@ export const getUserHostInvitations = async (
     where: { user_id: userId },
     select: { email: true },
   });
-  console.log("User Email:", userEmail, status);
   if (!userEmail) {
     throw new Error("User not found");
   }

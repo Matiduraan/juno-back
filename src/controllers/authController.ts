@@ -4,12 +4,22 @@ import jwt from "jsonwebtoken";
 import { hash } from "bcrypt";
 import dayjs from "dayjs";
 import { getGoogleUserId } from "./googleController";
+import { sendUpdatedPasswordEmail } from "./notificationsController";
 
 const db = new PrismaClient();
 
 export const getUserByEmail = async (email: string) => {
   return await db.user.findUnique({
     where: { email },
+  });
+};
+
+export const getUserById = async (userId: number) => {
+  return await db.user.findUnique({
+    where: { user_id: userId },
+    include: {
+      GoogleRefreshToken: true,
+    },
   });
 };
 
@@ -146,5 +156,77 @@ export const linkUserWithGoogle = async (
 export async function getUserByGoogleId(googleId: string) {
   return await db.user.findFirst({
     where: { google_id: googleId },
+  });
+}
+
+export async function forgotPassword(email: string) {
+  const user = await db.user.findUnique({
+    where: { email },
+  });
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  const token = await db.forgotPasswordToken.create({
+    data: {
+      user_id: user.user_id,
+      expires_at: dayjs().add(1, "hour").toDate(),
+    },
+  });
+
+  return token.token;
+}
+
+export async function updatePassword(token: string, newPassword: string) {
+  const forgotToken = await db.forgotPasswordToken.findUnique({
+    where: { token },
+    include: { user: true },
+  });
+
+  if (
+    !forgotToken ||
+    forgotToken.revoked ||
+    dayjs(forgotToken.expires_at).isBefore(dayjs())
+  ) {
+    throw new Error("Invalid or expired token");
+  }
+
+  const hashedPassword = await hash(newPassword, 10);
+
+  await db.user.update({
+    where: { user_id: forgotToken.user_id },
+    data: { password: hashedPassword },
+  });
+
+  await db.forgotPasswordToken.update({
+    where: { token },
+    data: { revoked: true },
+  });
+
+  await sendUpdatedPasswordEmail(forgotToken.user.email);
+
+  return { message: "Password updated successfully" };
+}
+
+export async function validateAccount(token: string) {
+  const user = await db.user.findFirst({
+    where: { email_verification_token: token },
+  });
+
+  if (!user) {
+    throw new Error("Invalid token");
+  }
+
+  if (user.verified) {
+    throw new Error("Account already verified");
+  }
+
+  return await db.user.update({
+    where: { user_id: user.user_id },
+    data: {
+      verified: true,
+      email_verification_token: null, // Clear the token after verification
+    },
   });
 }

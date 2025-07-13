@@ -19,7 +19,7 @@ export const sendEmail = (
   attachments?: Mail.Attachment[]
 ) => {
   return transporter().sendMail({
-    from: process.env.NODEMAILER_FROM, // sender address
+    from: process.env.NODEMAILER_USER, // sender address
     to,
     subject,
     html: body,

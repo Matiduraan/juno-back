@@ -7,4 +7,5 @@ export type CreateUserInput = {
   last_name: string;
   role?: UserRole;
   google_id?: string;
+  verified?: boolean;
 };

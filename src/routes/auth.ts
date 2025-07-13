@@ -2,14 +2,23 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import {
   createUser,
+  forgotPassword,
   getUserByEmail,
   getUserByGoogleId,
+  getUserById,
   getUserTokens,
   isRefreshTokenValid,
   revokeToken,
+  updatePassword,
+  validateAccount,
 } from "../controllers/authController";
 import { compare, hash } from "bcrypt";
 import { getUserInfoByGoogleToken } from "../controllers/googleController";
+import {
+  sendAccountValidationEmail,
+  sendForgotPasswordEmail,
+} from "../controllers/notificationsController";
+import authMiddleware from "../middlewares/authMiddlewre";
 
 const router = express();
 
@@ -66,8 +75,26 @@ router.post("/login", async (req, res) => {
   }
 });
 
+router.get("/validate", async (req, res) => {
+  const token = req.query.token as string;
+  if (!token) {
+    res.status(400).json({ error: "Token is required" });
+    return;
+  }
+  try {
+    const verified = await validateAccount(token);
+    if (!verified || !verified.verified) {
+      res.redirect(`${process.env.APP_URL}/login?error=validationFailed`);
+      return;
+    }
+    res.redirect(`${process.env.APP_URL}/`);
+  } catch (error) {
+    console.error("Validation error:", error);
+    res.redirect(`${process.env.APP_URL}/login?error=validationFailed`);
+  }
+});
+
 router.post("/refresh-token", async (req, res) => {
-  console.log("Refreshing token", req.cookies);
   const token = req.cookies.refresh_token;
   if (!token) {
     res.sendStatus(401);
@@ -126,6 +153,11 @@ router.post("/signUp", async (req, res) => {
       return;
     }
 
+    await sendAccountValidationEmail(
+      user.email,
+      user.email_verification_token!
+    );
+
     const { accessToken, refreshToken } = await getUserTokens({
       userId: user.user_id,
       userAgent: req.headers["user-agent"],
@@ -172,7 +204,6 @@ router.post("/loginWithGoogle", async (req, res) => {
       return;
     }
 
-    // const existingUser = await getUserByEmail(userInfo.email);
     const existingUser = await getUserByGoogleId(userInfo.google_id);
     if (!existingUser) {
       res.status(404).json({ error: "User not found" });
@@ -184,7 +215,6 @@ router.post("/loginWithGoogle", async (req, res) => {
       userAgent: req.headers["user-agent"],
       ip: req.ip,
     });
-
     res.cookie("access_token", newAccessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production", // Debe estar en true si estás usando HTTPS
@@ -250,6 +280,74 @@ router.get("/checkAuth", (req, res) => {
   } catch (error) {
     console.error("Token verification error:", error);
     res.status(401).json({ error: "Unauthorized" });
+  }
+});
+
+router.post("/forgotPassword", async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    res.status(400).json({ error: "Email is required" });
+    return;
+  }
+  try {
+    const token = await forgotPassword(email);
+    if (!token) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+    await sendForgotPasswordEmail(email, token);
+
+    res.status(200).json({ message: "Password reset token created" });
+  } catch (error) {
+    console.error("Forgot password error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/updatePassword", async (req, res) => {
+  const { token, password } = req.body;
+  if (!token || !password) {
+    res.status(400).json({ error: "Token and new password are required" });
+    return;
+  }
+  try {
+    const userId = await updatePassword(token, password);
+    if (!userId) {
+      res.status(404).json({ error: "Invalid token or user not found" });
+      return;
+    }
+    res.status(200).json({ message: "Password reset successfully" });
+  } catch (error) {
+    console.error("Reset password error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/resendVerification", authMiddleware, async (req, res) => {
+  const { userId } = req.auth || {};
+  if (!userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  try {
+    const user = await getUserById(userId);
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    if (user.verified || !user.email_verification_token) {
+      res.status(400).json({ error: "User already verified" });
+      return;
+    }
+
+    await sendAccountValidationEmail(user.email, user.email_verification_token);
+
+    res.status(200).json({ message: "Verification email sent" });
+  } catch (error) {
+    console.error("Resend verification error:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 

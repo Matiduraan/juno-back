@@ -12,14 +12,6 @@ export const getUserParties = (
   sort: "asc" | "desc" = "desc",
   name?: string
 ) => {
-  console.log("getUserParties called with:", {
-    userId,
-    offset,
-    limit,
-    sort_by,
-    sort,
-    name,
-  });
   const data = db.party.findMany({
     where: {
       OR: [
