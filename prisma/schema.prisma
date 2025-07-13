@@ -26,6 +26,7 @@ model User {
   PartyMomentType          PartyMomentType[]
   RefreshToken             RefreshToken[]
   forgotPasswordToken      forgotPasswordToken[]
+  UserPreferences          UserPreferences?
 }
 
 model RefreshToken {
@@ -208,6 +209,16 @@ model PartyInvitation {
   updated_at                DateTime @updatedAt
 
   Party Party @relation(fields: [party_id], references: [party_id])
+}
+
+model UserPreferences {
+  preference_id      Int      @id @default(autoincrement())
+  user_id            Int      @unique
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+  finished_tutorials String?
+
+  User User @relation(fields: [user_id], references: [user_id])
 }
 
 enum UserRole {

@@ -54,7 +54,7 @@ router.get("/callback", async (req, res) => {
         res.redirect(`${process.env.APP_URL}/login?error=userAlreadyExists`);
         return;
       }
-      const newUser = await createUser(data);
+      const newUser = await createUser({ ...data, verified: true });
       if (!newUser) {
         res.redirect(`${process.env.APP_URL}/login?error=userCreationFailed`);
         return;

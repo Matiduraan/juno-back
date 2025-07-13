@@ -17,7 +17,6 @@ import { getUserInfoByGoogleToken } from "../controllers/googleController";
 import {
   sendAccountValidationEmail,
   sendForgotPasswordEmail,
-  sendUpdatedPasswordEmail,
 } from "../controllers/notificationsController";
 import authMiddleware from "../middlewares/authMiddlewre";
 
@@ -205,7 +204,6 @@ router.post("/loginWithGoogle", async (req, res) => {
       return;
     }
 
-    // const existingUser = await getUserByEmail(userInfo.email);
     const existingUser = await getUserByGoogleId(userInfo.google_id);
     if (!existingUser) {
       res.status(404).json({ error: "User not found" });
@@ -217,7 +215,6 @@ router.post("/loginWithGoogle", async (req, res) => {
       userAgent: req.headers["user-agent"],
       ip: req.ip,
     });
-
     res.cookie("access_token", newAccessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production", // Debe estar en true si estás usando HTTPS
