@@ -15,7 +15,12 @@ import {
   sendEmailInvitation,
   sendWhatsappInvitation,
 } from "../controllers/notificationsController";
-import { updateGuestStatus } from "../controllers/guestsController";
+import {
+  getPartyGuestsByIds,
+  massiveUpdateGuestStatus,
+  updateGuestStatus,
+} from "../controllers/guestsController";
+import { isDataView } from "util/types";
 
 const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "application/pdf"];
 
@@ -165,7 +170,7 @@ router.post(
       return;
     }
     const { messageOption } = req.body;
-    if (!messageOption) {
+    if (isNaN(Number(messageOption))) {
       res.status(400).json({ error: "Missing required field: messageOption" });
       return;
     }
@@ -304,7 +309,7 @@ router.post("/guest/:guestId/send", async (req, res) => {
       console.error("Error sending WhatsApp invitation:", error);
     }
   }
-  if (failedMethods.length === methods.length) {
+  if (failedMethods.length === methods.length && failedMethods.length > 0) {
     res.status(500).json({
       error: "Failed to send invitations",
       failedMethods,
@@ -314,6 +319,111 @@ router.post("/guest/:guestId/send", async (req, res) => {
   const update = await updateGuestStatus(parseInt(guestId), "INVITED");
   res.status(200).json({ update, failedMethods });
 });
+
+router.post(
+  "/:partyId/massive/send",
+  partyValidationMiddleware,
+  async (req, res) => {
+    const { ids, methods } = req.body;
+    const { partyId } = req.params;
+    if (
+      !ids ||
+      !partyId ||
+      isNaN(parseInt(partyId)) ||
+      !Array.isArray(ids) ||
+      ids.length === 0
+    ) {
+      res.status(400).json({ error: "Missing required fields" });
+      return;
+    }
+    try {
+      let successInvites: number[] = [];
+      let failedInvites: number[] = [];
+      const guestsInfo = await getPartyGuestsByIds(parseInt(partyId), ids);
+      if (guestsInfo.length === 0) {
+        res.status(404).json({ error: "No guests found for the provided IDs" });
+        return;
+      }
+      await massiveUpdateGuestStatus(parseInt(partyId), ids, "INVITED");
+      let promises = [];
+      for (const guest of guestsInfo) {
+        if (methods.includes("email") && guest.guest_email) {
+          const email: string = guest.guest_email;
+          const promise = async () => {
+            try {
+              const invite = await sendEmailInvitation(
+                parseInt(partyId),
+                email,
+                guest.guest_id
+              );
+              console.log("Whatsapp invite:", invite);
+
+              if (invite.rejected.length === 0) {
+                successInvites.push(guest.guest_id);
+              }
+            } catch (error) {
+              console.error(
+                `Error sending email to ${guest.guest_email}:`,
+                error
+              );
+              failedInvites.push(guest.guest_id);
+            }
+          };
+          promises.push(promise());
+        }
+        if (methods.includes("whatsapp") && !!guest.guest_phone) {
+          const phone: string = guest.guest_phone;
+          const promise = async () => {
+            try {
+              const invite = await sendWhatsappInvitation(
+                parseInt(partyId),
+                phone,
+                guest.guest_id
+              );
+              if (invite) {
+                successInvites.push(guest.guest_id);
+              }
+            } catch (error) {
+              console.error(
+                `Error sending WhatsApp message to ${guest.guest_phone}:`,
+                error
+              );
+              failedInvites.push(guest.guest_id);
+            }
+          };
+          promises.push(promise());
+        }
+      }
+      await Promise.all(promises);
+      const realFailedInvites = failedInvites.filter(
+        (id) => !successInvites.includes(id)
+      );
+      if (realFailedInvites.length > 0) {
+        await massiveUpdateGuestStatus(
+          parseInt(partyId),
+          failedInvites,
+          "PENDING"
+        );
+      }
+      if (successInvites.length === 0) {
+        res.status(400).json({
+          error: "No invitations were sent successfully",
+          failedInvites,
+        });
+        return;
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Invitations sent successfully",
+        invitedGuests: new Set(successInvites).size,
+      });
+    } catch (error) {
+      console.error("Error inviting guests:", error);
+      res.status(500).json({ error: "Failed to invite guests" });
+    }
+  }
+);
 
 router.get("/:partyId", partyValidationMiddleware, async (req, res) => {
   const partyId = parseInt(req.params.partyId);

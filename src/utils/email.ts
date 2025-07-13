@@ -4,7 +4,7 @@ import Mail from "nodemailer/lib/mailer";
 const transporter = () =>
   createTransport({
     host: process.env.NODEMAILER_HOST,
-    port: 587,
+    port: parseInt(process.env.NODEMAILER_PORT ?? "587"),
     secure: false, // use false for STARTTLS; true for SSL on port 465
     auth: {
       user: process.env.NODEMAILER_USER, // generated ethereal user
@@ -19,7 +19,7 @@ export const sendEmail = (
   attachments?: Mail.Attachment[]
 ) => {
   return transporter().sendMail({
-    from: process.env.NODEMAILER_USER, // sender address
+    from: process.env.NODEMAILER_FROM, // sender address
     to,
     subject,
     html: body,

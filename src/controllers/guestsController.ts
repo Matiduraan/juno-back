@@ -28,6 +28,20 @@ export const getPartyGuestById = async (partyId: number, guestId: number) => {
   });
 };
 
+export const getPartyGuestsByIds = async (
+  partyId: number,
+  guestIds: number[]
+): Promise<PartyGuest[]> => {
+  return await db.partyGuest.findMany({
+    where: {
+      party_id: partyId,
+      guest_id: {
+        in: guestIds,
+      },
+    },
+  });
+};
+
 export const getPartyGuests = async (
   partyId: number,
   offset = 0,
@@ -159,6 +173,32 @@ export const updateGuestStatus = (guestId: number, status: GuestStatus) => {
     data: {
       guest_status: status,
       confirmed_at: confirmed ? new Date() : null,
+    },
+  });
+};
+
+export const massiveUpdateGuestStatus = async (
+  partyId: number,
+  ids: number[],
+  status: GuestStatus
+) => {
+  if (ids.length === 0) {
+    throw new Error("No guest IDs provided for update");
+  }
+  console.log(
+    `Updating guests with IDs: ${ids.join(", ")} to status: ${status}`
+  );
+  return await db.partyGuest.updateMany({
+    where: {
+      party_id: partyId,
+      guest_id: {
+        in: ids,
+      },
+    },
+    data: {
+      guest_status: status,
+      confirmed_at:
+        status === "ACCEPTED" || status === "DECLINED" ? new Date() : null,
     },
   });
 };
