@@ -9,6 +9,7 @@ import MomentRouter from "./moment";
 import hostInvitationsRouter from "./hostInvitations";
 import testRouter from "./test";
 import invitationsRouter from "./invitations";
+import supportRouter from "./support";
 
 export {
   partyRouter,
@@ -21,4 +22,5 @@ export {
   hostInvitationsRouter,
   testRouter,
   invitationsRouter,
+  supportRouter,
 };

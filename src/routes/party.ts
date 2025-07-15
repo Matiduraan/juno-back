@@ -454,8 +454,7 @@ router.post(
         res.status(400).json({ error: "Invalid file format" });
         return;
       }
-      const [_, ...dataRows] = worksheetsFromFile[0].data;
-      console.log("Data rows:", dataRows);
+      const [_, __, ...dataRows] = worksheetsFromFile[0].data;
       const guests = processGuestsFile(dataRows);
 
       res.status(200).send(guests);
@@ -467,13 +466,18 @@ router.post(
 );
 
 router.put("/:partyId/guests", async (req, res) => {
+  const { partyId } = req.params;
+  if (!partyId || isNaN(parseInt(partyId))) {
+    res.status(400).json({ error: "Invalid party ID" });
+    return;
+  }
   const {
     guest_id,
-    party_id,
     guest_name,
     guest_status,
     guest_email,
     guest_phone,
+    guest_notes,
   } = req.body;
 
   if (!guest_id) {
@@ -483,7 +487,7 @@ router.put("/:partyId/guests", async (req, res) => {
 
   try {
     const hasAccess = await validatePartyAccess(
-      parseInt(party_id),
+      parseInt(partyId),
       req.auth.userId
     );
     if (!hasAccess) {
@@ -493,12 +497,17 @@ router.put("/:partyId/guests", async (req, res) => {
       });
       return;
     }
-    const updatedGuest = await updatePartyGuest(party_id, parseInt(guest_id), {
-      guest_name,
-      guest_status,
-      guest_email,
-      guest_phone,
-    });
+    const updatedGuest = await updatePartyGuest(
+      parseInt(guest_id),
+      parseInt(partyId),
+      {
+        guest_name,
+        guest_status,
+        guest_email,
+        guest_phone,
+        guest_notes,
+      }
+    );
     res.status(200).json(updatedGuest);
   } catch (error) {
     console.error("Error updating guest:", error);
