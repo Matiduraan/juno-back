@@ -10,7 +10,6 @@ import {
   hostInvitationsRouter,
   testRouter,
   invitationsRouter,
-  guestRouter,
 } from "./routes";
 import bodyParser from "body-parser";
 import cors from "cors";
@@ -33,7 +32,6 @@ app.use(cookieParser());
 app.use("/", testRouter);
 app.use("/layout", layoutRouter);
 app.use("/party", partyRouter);
-app.use("/guest", guestRouter);
 app.use("/user", userRouter);
 app.use("/auth", authRouter);
 app.use("/google", googleRouter);

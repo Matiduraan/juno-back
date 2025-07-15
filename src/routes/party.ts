@@ -471,8 +471,14 @@ router.put("/:partyId/guests", async (req, res) => {
     res.status(400).json({ error: "Invalid party ID" });
     return;
   }
-  const { guest_id, guest_name, guest_status, guest_email, guest_phone } =
-    req.body;
+  const {
+    guest_id,
+    guest_name,
+    guest_status,
+    guest_email,
+    guest_phone,
+    guest_notes,
+  } = req.body;
 
   if (!guest_id) {
     res.status(400).json({ error: "Missing guest ID" });
@@ -499,6 +505,7 @@ router.put("/:partyId/guests", async (req, res) => {
         guest_status,
         guest_email,
         guest_phone,
+        guest_notes,
       }
     );
     res.status(200).json(updatedGuest);
