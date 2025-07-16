@@ -29,7 +29,6 @@ router.get("/party/:partyId", partyValidationMiddleware, async (req, res) => {
 });
 
 router.get("/momentTypes", async (req, res) => {
-  console.log("Fetching moment types");
   const userId = req.query?.userId
     ? parseInt(req.query.userId.toString())
     : undefined;
