@@ -8,3 +8,5 @@ export const GUEST_SORTABLE_FIELDS = [
   "guest_notes",
   "guest_seat",
 ];
+
+export const CUSTOM_FIELD_TYPES = ["TEXT", "NUMBER", "DATE"];

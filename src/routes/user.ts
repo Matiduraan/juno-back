@@ -34,8 +34,15 @@ router.get("/preferences", async (req, res) => {
     res.status(400).json({ error: "Invalid user ID" });
     return;
   }
+  const partyId = req.query.partyId
+    ? parseInt(req.query.partyId.toString())
+    : undefined;
+  if (partyId && isNaN(partyId)) {
+    res.status(400).json({ error: "Invalid party ID" });
+    return;
+  }
   try {
-    const preferences = await getUserPreferences(userId);
+    const preferences = await getUserPreferences(userId, partyId);
     res.status(200).json(preferences);
   } catch (error) {
     console.error("Error fetching user preferences:", error);
@@ -51,11 +58,31 @@ router.put("/preferences", async (req, res) => {
   }
   try {
     const newPreferences = req.body.preferences;
-    const updatedPreferences = await updateUserPreferences(
-      userId,
-      newPreferences
+    const valid =
+      newPreferences &&
+      Array.isArray(newPreferences) &&
+      newPreferences.every(
+        (pref) =>
+          typeof pref.preference_name === "string" &&
+          (typeof pref.preference_value === "string" ||
+            pref.preference_value === null) &&
+          (pref.party_id === undefined || typeof pref.party_id === "number")
+      );
+    if (!valid) {
+      res.status(400).json({ error: "Invalid preferences format" });
+      return;
+    }
+    const updated = await Promise.all(
+      newPreferences.map((pref) =>
+        updateUserPreferences(
+          userId,
+          pref.party_id || null,
+          pref.preference_name,
+          pref.preference_value
+        )
+      )
     );
-    res.status(200).json(updatedPreferences);
+    res.status(200).json(updated);
   } catch (error) {
     console.error("Error updating user preferences:", error);
     res.status(500).json({ error: "Internal server error" });

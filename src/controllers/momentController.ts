@@ -67,12 +67,12 @@ export async function deletePartyMoment(partyMomentId: number) {
   });
 }
 
-export async function getPartyMomentTypes(partyId?: number) {
+export async function getPartyMomentTypes(userId?: number) {
   return await db.partyMomentType.findMany({
     where: {
       OR: [
         {
-          user_id: partyId,
+          user_id: userId,
         },
         {
           user_id: {
