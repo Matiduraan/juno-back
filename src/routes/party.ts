@@ -4,6 +4,8 @@ import {
   addPartyGuest,
   deletePartyGuest,
   exportGuestsInfo,
+  getCustomFieldsByIds,
+  getPartyCustomFields,
   getPartyGuestById,
   getPartyGuests,
   getPartyGuestsCountByStatus,
@@ -126,7 +128,15 @@ router.get("/:partyId", async (req, res) => {
 
 router.get("/:partyId/guests", async (req, res) => {
   const { partyId } = req.params;
-  const { offset = 0, limit = 50, status, query, sort, sortBy } = req.query;
+  const {
+    offset = 0,
+    limit = 50,
+    status,
+    query,
+    sort,
+    sortBy,
+    includeCustomFields = "false",
+  } = req.query;
   if (!partyId || isNaN(parseInt(partyId))) {
     res.status(400).json({ error: "Invalid party ID" });
     return;
@@ -157,7 +167,8 @@ router.get("/:partyId/guests", async (req, res) => {
           sortDirection && (sortDirection === "asc" || sortDirection === "desc")
             ? sortDirection
             : "asc",
-      }
+      },
+      includeCustomFields.toString() === "true"
     );
     res.status(200).json(guests);
   } catch (error) {
@@ -166,44 +177,69 @@ router.get("/:partyId/guests", async (req, res) => {
   }
 });
 
-router.get("/:partyId/guests/export", async (req, res) => {
-  const { partyId } = req.params;
-  if (!partyId || isNaN(parseInt(partyId))) {
-    res.status(400).json({ error: "Invalid party ID" });
-    return;
-  }
-  try {
-    const hasAccess = await validatePartyAccess(
-      parseInt(partyId),
-      req.auth.userId
-    );
-    if (!hasAccess) {
-      res.status(403).json({
-        error:
-          "Forbidden: You are not authorized to export this party's guests",
-      });
+router.get(
+  "/:partyId/guests/export",
+  partyValidationMiddleware,
+  async (req, res) => {
+    const { partyId } = req.params;
+    if (!partyId || isNaN(parseInt(partyId))) {
+      res.status(400).json({ error: "Invalid party ID" });
       return;
     }
-    const guests = await getPartyGuests(parseInt(partyId));
+    try {
+      const guests = await getPartyGuests(
+        parseInt(partyId),
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        true
+      );
+      const customFieldsNames = await getPartyCustomFields(parseInt(partyId));
 
-    const worksheet = utils.json_to_sheet(guests.data);
-    const workbook = utils.book_new();
-    utils.book_append_sheet(workbook, worksheet, "Reporte de Invitados");
+      const guestsData = guests.data.map((guest) => {
+        return {
+          "Guest ID": guest.guest_id,
+          "Guest Name": guest.guest_name,
+          "Guest Email": guest.guest_email,
+          "Guest Phone": guest.guest_phone,
+          "Guest Status": guest.guest_status,
+          "Guest Notes": guest.guest_notes,
+          "Guest Seat": guest.Guest_seat?.layout_item_name || "-",
+          ...customFieldsNames.reduce(
+            (acc, field) => ({
+              ...acc,
+              [field.field_name]:
+                guest.GuestCustomFieldValues.find(
+                  (value) => value.field_id === field.field_id
+                )?.field_value || "-",
+            }),
+            {}
+          ),
+        };
+      });
+      const worksheet = utils.json_to_sheet(guestsData);
+      const workbook = utils.book_new();
+      utils.book_append_sheet(workbook, worksheet, "Reporte de Invitados");
 
-    const buffer = write(workbook, { type: "buffer", bookType: "xlsx" });
+      const buffer = write(workbook, { type: "buffer", bookType: "xlsx" });
 
-    // Enviar el archivo como respuesta
-    res.setHeader("Content-Disposition", 'attachment; filename="reporte.xlsx"');
-    res.setHeader(
-      "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    );
-    res.send(buffer);
-  } catch (error) {
-    console.error("Error exporting guests:", error);
-    res.status(500).json({ error: "Internal server error" });
+      // Enviar el archivo como respuesta
+      res.setHeader(
+        "Content-Disposition",
+        'attachment; filename="reporte.xlsx"'
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+      res.send(buffer);
+    } catch (error) {
+      console.error("Error exporting guests:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
   }
-});
+);
 
 router.get("/:partyId/summaryMetrics", async (req, res) => {
   const { partyId } = req.params;
@@ -346,13 +382,14 @@ router.post("/:partyId/inviteHost", async (req, res) => {
   }
 });
 
-router.post("/:partyId/guests", async (req, res) => {
+router.post("/:partyId/guests", partyValidationMiddleware, async (req, res) => {
   const { partyId } = req.params;
   if (!partyId || isNaN(parseInt(partyId))) {
     res.status(400).json({ error: "Invalid party ID" });
     return;
   }
-  const { guest_name, guest_notes, guest_email, guest_phone } = req.body;
+  const { guest_name, guest_notes, guest_email, guest_phone, custom_fields } =
+    req.body;
   if (!guest_name && !guest_email && !guest_phone && !guest_notes) {
     res.status(400).json({ error: "Missing required fields" });
     return;
@@ -364,15 +401,16 @@ router.post("/:partyId/guests", async (req, res) => {
   }
 
   try {
-    const hasAccess = await validatePartyAccess(
-      parseInt(partyId),
-      req.auth.userId
-    );
-    if (!hasAccess) {
-      res.status(403).json({
-        error:
-          "Forbidden: You are not authorized to export this party's guests",
-      });
+    const validCustomFields =
+      Array.isArray(custom_fields) &&
+      custom_fields.every(
+        (field: Record<string, unknown>) =>
+          !!field.field_id &&
+          typeof field.field_id === "number" &&
+          (typeof field.field_value === "string" || field.field_value === null)
+      );
+    if (!validCustomFields) {
+      res.status(400).json({ error: "Invalid custom fields data" });
       return;
     }
     const newGuest = await addPartyGuest({
@@ -381,6 +419,7 @@ router.post("/:partyId/guests", async (req, res) => {
       guest_email,
       guest_phone,
       guest_notes,
+      custom_fields,
     });
     res.status(201).json(newGuest);
   } catch (error) {
@@ -465,7 +504,7 @@ router.post(
   }
 );
 
-router.put("/:partyId/guests", async (req, res) => {
+router.put("/:partyId/guests", partyValidationMiddleware, async (req, res) => {
   const { partyId } = req.params;
   if (!partyId || isNaN(parseInt(partyId))) {
     res.status(400).json({ error: "Invalid party ID" });
@@ -478,6 +517,7 @@ router.put("/:partyId/guests", async (req, res) => {
     guest_email,
     guest_phone,
     guest_notes,
+    custom_fields,
   } = req.body;
 
   if (!guest_id) {
@@ -486,15 +526,16 @@ router.put("/:partyId/guests", async (req, res) => {
   }
 
   try {
-    const hasAccess = await validatePartyAccess(
-      parseInt(partyId),
-      req.auth.userId
-    );
-    if (!hasAccess) {
-      res.status(403).json({
-        error:
-          "Forbidden: You are not authorized to export this party's guests",
-      });
+    const validCustomFields =
+      Array.isArray(custom_fields) &&
+      custom_fields.every(
+        (field: Record<string, unknown>) =>
+          !!field.field_id &&
+          typeof field.field_id === "number" &&
+          (typeof field.field_value === "string" || field.field_value === null)
+      );
+    if (!validCustomFields) {
+      res.status(400).json({ error: "Invalid custom fields data" });
       return;
     }
     const updatedGuest = await updatePartyGuest(
@@ -506,6 +547,7 @@ router.put("/:partyId/guests", async (req, res) => {
         guest_email,
         guest_phone,
         guest_notes,
+        custom_fields,
       }
     );
     res.status(200).json(updatedGuest);

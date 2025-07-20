@@ -1,6 +1,10 @@
-import { PrismaClient, PartyGuest } from "@prisma/client";
+import { PrismaClient, PartyGuest, CustomFieldType } from "@prisma/client";
 import { validateGuestFromFile } from "../validations/partyValidations";
 import { GUEST_SORTABLE_FIELDS } from "../constants/guest";
+import {
+  formatCustomFieldValueToString,
+  validateCustomFieldValue,
+} from "../utils/guestCustomValues";
 
 const db = new PrismaClient();
 
@@ -50,7 +54,8 @@ export const getPartyGuests = async (
   sort: { field?: string; direction?: "asc" | "desc" } = {
     field: "guest_name",
     direction: "asc",
-  }
+  },
+  includeCustomFields = false
 ) => {
   let sortField: string =
     sort?.field && GUEST_SORTABLE_FIELDS.includes(sort.field)
@@ -80,6 +85,14 @@ export const getPartyGuests = async (
           layout_item_name: true,
         },
       },
+      ...(includeCustomFields && {
+        GuestCustomFieldValues: {
+          select: {
+            field_id: true,
+            field_value: true,
+          },
+        },
+      }),
     },
     take: limit !== 0 ? limit : undefined,
     skip: offset,
@@ -142,9 +155,79 @@ export const getPartyGuestsCountByStatus = async (partyId: number) => {
   );
 };
 
-export const addPartyGuest = (guestData: AddGuestInput) => {
-  return db.partyGuest.create({
-    data: guestData,
+export const addPartyGuest = ({
+  custom_fields,
+  ...guestData
+}: AddGuestInput) => {
+  return db.$transaction(async (tx) => {
+    const newGuest = await tx.partyGuest.create({
+      data: guestData,
+    });
+
+    if (custom_fields && custom_fields.length > 0) {
+      const fields = await tx.guestCustomFields.findMany({
+        where: {
+          field_id: {
+            in: custom_fields.map((field) => field.field_id),
+          },
+        },
+      });
+
+      await Promise.all(
+        custom_fields.map(async (field) => {
+          const customField = fields.find((f) => f.field_id === field.field_id);
+          if (!customField) {
+            throw new Error(`Custom field with ID ${field.field_id} not found`);
+          }
+          if (
+            field.field_value !== null &&
+            !validateCustomFieldValue(
+              customField.field_type as CustomFieldType,
+              field.field_value
+            )
+          ) {
+            throw new Error(
+              `Invalid value for field ${customField.field_name}`
+            );
+          }
+          const value =
+            field.field_value === null
+              ? null
+              : formatCustomFieldValueToString(
+                  customField.field_type as CustomFieldType,
+                  field.field_value
+                );
+          if (value === null) {
+            await tx.guestCustomFieldValues.delete({
+              where: {
+                field_id_guest_id: {
+                  field_id: field.field_id,
+                  guest_id: newGuest.guest_id,
+                },
+              },
+            });
+          } else {
+            await tx.guestCustomFieldValues.upsert({
+              where: {
+                field_id_guest_id: {
+                  field_id: field.field_id,
+                  guest_id: newGuest.guest_id,
+                },
+              },
+              update: {
+                field_value: value,
+              },
+              create: {
+                field_id: field.field_id,
+                guest_id: newGuest.guest_id,
+                field_value: value,
+              },
+            });
+          }
+        })
+      );
+    }
+    return newGuest;
   });
 };
 
@@ -206,14 +289,65 @@ export const massiveUpdateGuestStatus = async (
 export const updatePartyGuest = (
   guestId: number,
   partyId: number,
-  guestData: Partial<AddGuestInput>
+  { custom_fields, ...guestData }: Partial<AddGuestInput>
 ) => {
-  return db.partyGuest.update({
-    where: {
-      guest_id: guestId,
-      party_id: partyId,
-    },
-    data: guestData,
+  return db.$transaction(async (tx) => {
+    if (custom_fields && custom_fields.length > 0) {
+      const customFields = custom_fields;
+      const fields = await getCustomFieldsByIds(
+        customFields.map((field) => field.field_id)
+      );
+      await Promise.all(
+        customFields.map(async (field) => {
+          const customField = fields.find((f) => f.field_id === field.field_id);
+          if (!customField) {
+            throw new Error(`Custom field with ID ${field.field_id} not found`);
+          }
+          if (
+            field.field_value !== null &&
+            typeof field.field_value !== "string"
+          ) {
+            throw new Error(
+              `Invalid value for field ${customField.field_name} ${field.field_value}`
+            );
+          }
+          if (field.field_value === null) {
+            await db.guestCustomFieldValues.delete({
+              where: {
+                field_id_guest_id: {
+                  field_id: field.field_id,
+                  guest_id: guestId,
+                },
+              },
+            });
+          } else {
+            await db.guestCustomFieldValues.upsert({
+              where: {
+                field_id_guest_id: {
+                  field_id: field.field_id,
+                  guest_id: guestId,
+                },
+              },
+              update: {
+                field_value: field.field_value,
+              },
+              create: {
+                field_id: field.field_id,
+                guest_id: guestId,
+                field_value: field.field_value,
+              },
+            });
+          }
+        })
+      );
+    }
+    return tx.partyGuest.update({
+      where: {
+        guest_id: guestId,
+        party_id: partyId,
+      },
+      data: guestData,
+    });
   });
 };
 
@@ -288,4 +422,86 @@ export const processGuestsFile = (guests: unknown[][]) => {
     validateGuestFromFile(guests, "filter");
 
   return processedGuests;
+};
+
+export const getPartyCustomFields = async (partyId: number) => {
+  return await db.guestCustomFields.findMany({
+    where: {
+      party_id: partyId,
+    },
+  });
+};
+
+export const updatePartyCustomFields = async (
+  partyId: number,
+  customFields: {
+    field_name: string;
+    field_type: CustomFieldType;
+    field_id?: number;
+  }[]
+) => {
+  return await Promise.all(
+    customFields.map((field) => {
+      return db.guestCustomFields.upsert({
+        where: {
+          field_id: field.field_id ?? -1,
+        },
+        update: {
+          field_name: field.field_name,
+        },
+        create: {
+          party_id: partyId,
+          field_name: field.field_name,
+          field_type: field.field_type,
+        },
+      });
+    })
+  );
+};
+
+export const deletePartyCustomField = async (
+  partyId: number,
+  fieldId: number
+) => {
+  return await db.guestCustomFields.delete({
+    where: {
+      party_id: partyId,
+      field_id: fieldId,
+    },
+  });
+};
+
+export const getCustomFieldsByIds = async (fieldIds: number[]) => {
+  return await db.guestCustomFields.findMany({
+    where: {
+      field_id: {
+        in: fieldIds,
+      },
+    },
+  });
+};
+
+export const setCustomFieldValue = async (
+  fieldId: number,
+  fieldType: CustomFieldType,
+  guestId: number,
+  fieldValue: string | number | boolean
+) => {
+  const value = formatCustomFieldValueToString(fieldType, fieldValue);
+  return await db.guestCustomFieldValues.upsert({
+    where: {
+      field_id_guest_id: {
+        field_id: fieldId,
+        guest_id: guestId,
+      },
+    },
+    update: {
+      field_value: value,
+    },
+    create: {
+      field_id: fieldId,
+      guest_id: guestId,
+      field_value: value,
+    },
+  });
 };

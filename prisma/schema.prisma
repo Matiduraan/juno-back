@@ -26,7 +26,7 @@ model User {
   PartyMomentType          PartyMomentType[]
   RefreshToken             RefreshToken[]
   forgotPasswordToken      forgotPasswordToken[]
-  UserPreferences          UserPreferences?
+  UserPreferences          UserPreferences[]
 }
 
 model RefreshToken {
@@ -120,12 +120,12 @@ model PartyMomentType {
 }
 
 model Party {
-  party_id                   Int               @id @default(autoincrement())
+  party_id                   Int                 @id @default(autoincrement())
   party_name                 String
   organizer_id               Int
   layout_id                  Int
-  created_at                 DateTime          @default(now())
-  updated_at                 DateTime          @updatedAt
+  created_at                 DateTime            @default(now())
+  updated_at                 DateTime            @updatedAt
   party_date                 DateTime
   party_end_time             String
   party_start_time           String
@@ -136,12 +136,14 @@ model Party {
   party_special_instructions String?
   CalendarEvent              CalendarEvent[]
   HostInvitation             HostInvitation[]
-  Layout                     Layout            @relation(fields: [layout_id], references: [layout_id], onDelete: Cascade)
-  Organizer                  User              @relation(fields: [organizer_id], references: [user_id])
+  Layout                     Layout              @relation(fields: [layout_id], references: [layout_id], onDelete: Cascade)
+  Organizer                  User                @relation(fields: [organizer_id], references: [user_id])
   PartyGuests                PartyGuest[]
   PartyHosts                 PartyHost[]
   PartyMoment                PartyMoment[]
   PartyInvitation            PartyInvitation[]
+  GuestCustomFields          GuestCustomFields[]
+  UserPreferences            UserPreferences[]
 }
 
 model CalendarEvent {
@@ -159,21 +161,22 @@ model CalendarEvent {
 }
 
 model PartyGuest {
-  party_id        Int
-  guest_status    GuestStatus @default(PENDING)
-  created_at      DateTime    @default(now())
-  updated_at      DateTime    @updatedAt
-  guest_email     String?
-  guest_name      String
-  guest_notes     String?
-  guest_phone     String?
-  guest_avatar    String?
-  confirmation_id String?     @unique @default(cuid())
-  confirmed_at    DateTime?
-  guest_seat_id   Int?        @unique
-  guest_id        Int         @id @default(autoincrement())
-  Guest_seat      LayoutItem? @relation(fields: [guest_seat_id], references: [layout_item_id], onDelete: SetNull)
-  Party           Party       @relation(fields: [party_id], references: [party_id], onDelete: Cascade)
+  party_id               Int
+  guest_status           GuestStatus              @default(PENDING)
+  created_at             DateTime                 @default(now())
+  updated_at             DateTime                 @updatedAt
+  guest_email            String?
+  guest_name             String
+  guest_notes            String?
+  guest_phone            String?
+  guest_avatar           String?
+  confirmation_id        String?                  @unique @default(cuid())
+  confirmed_at           DateTime?
+  guest_seat_id          Int?                     @unique
+  guest_id               Int                      @id @default(autoincrement())
+  Guest_seat             LayoutItem?              @relation(fields: [guest_seat_id], references: [layout_item_id], onDelete: SetNull)
+  Party                  Party                    @relation(fields: [party_id], references: [party_id], onDelete: Cascade)
+  GuestCustomFieldValues GuestCustomFieldValues[]
 }
 
 model PartyHost {
@@ -212,13 +215,45 @@ model PartyInvitation {
 }
 
 model UserPreferences {
-  preference_id      Int      @id @default(autoincrement())
-  user_id            Int      @unique
-  created_at         DateTime @default(now())
-  updated_at         DateTime @updatedAt
-  finished_tutorials String?
+  preference_id    Int      @id @default(autoincrement())
+  user_id          Int
+  party_id         Int?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+  preference_name  String
+  preference_value String
 
-  User User @relation(fields: [user_id], references: [user_id])
+  User  User   @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  Party Party? @relation(fields: [party_id], references: [party_id], onDelete: Cascade)
+
+  @@unique([user_id, party_id, preference_name])
+  @@index([user_id, party_id])
+}
+
+model GuestCustomFields {
+  field_id   Int      @id @default(autoincrement())
+  party_id   Int
+  field_name String
+  field_type String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  Party                  Party                    @relation(fields: [party_id], references: [party_id])
+  GuestCustomFieldValues GuestCustomFieldValues[]
+}
+
+model GuestCustomFieldValues {
+  value_id    Int      @id @default(autoincrement())
+  field_id    Int
+  guest_id    Int
+  field_value String
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  Guest PartyGuest        @relation(fields: [guest_id], references: [guest_id])
+  Field GuestCustomFields @relation(fields: [field_id], references: [field_id])
+
+  @@unique([field_id, guest_id])
 }
 
 enum UserRole {
@@ -242,4 +277,11 @@ enum HostInvitationStatus {
   PENDING
   SENT
   ACCEPTED
+}
+
+enum CustomFieldType {
+  TEXT
+  NUMBER
+  DATE
+  CHECKBOX
 }
