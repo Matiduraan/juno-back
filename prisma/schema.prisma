@@ -172,7 +172,7 @@ model PartyGuest {
   guest_avatar           String?
   confirmation_id        String?                  @unique @default(cuid())
   confirmed_at           DateTime?
-  guest_seat_id          Int?                     @unique
+  guest_seat_id          Int?
   guest_id               Int                      @id @default(autoincrement())
   Guest_seat             LayoutItem?              @relation(fields: [guest_seat_id], references: [layout_item_id], onDelete: SetNull)
   Party                  Party                    @relation(fields: [party_id], references: [party_id], onDelete: Cascade)
