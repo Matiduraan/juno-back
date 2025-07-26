@@ -1,8 +1,6 @@
-import { PrismaClient } from "@prisma/client";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import fs from "fs";
-
-const db = new PrismaClient();
+import { db } from "../lib/db";
 
 const s3 = new S3Client({
   region: "us-east-1",

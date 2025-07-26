@@ -1,6 +1,4 @@
-import { PrismaClient } from "@prisma/client";
-
-const db = new PrismaClient();
+import { db } from "../../lib/db";
 
 export const validatePartyAccess = async (partyId: number, userId?: number) => {
   if (!userId || isNaN(parseInt(userId.toString()))) return false;

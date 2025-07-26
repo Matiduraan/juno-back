@@ -11,14 +11,14 @@ import {
   getPartyMomentTypeById,
   updatePartyMomentType,
 } from "../controllers/momentController";
-import partyValidationMiddleware from "../middlewares/partyValidationMiddleware";
 import authMiddleware from "../middlewares/authMiddlewre";
+import roleValidationMiddleware from "../middlewares/roleValidationMiddleware";
 
 const router = express();
 
 router.use(authMiddleware);
 
-router.get("/party/:partyId", partyValidationMiddleware, async (req, res) => {
+router.get("/party/:partyId", async (req, res) => {
   const partyId = parseInt(req.params.partyId);
   try {
     const moments = await getPartyMoments(partyId);
@@ -131,7 +131,7 @@ router.get("/:partyMomentId", async (req, res) => {
   }
 });
 
-router.post("/:partyId", partyValidationMiddleware, async (req, res) => {
+router.post("/:partyId", async (req, res) => {
   const partyId = parseInt(req.params.partyId);
   if (!partyId || isNaN(partyId)) {
     res.status(400).json({ error: "Invalid party ID" });

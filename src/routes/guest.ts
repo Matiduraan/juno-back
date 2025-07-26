@@ -1,6 +1,5 @@
 import express from "express";
 import authMiddleware from "../middlewares/authMiddlewre";
-import partyValidationMiddleware from "../middlewares/partyValidationMiddleware";
 import {
   deletePartyCustomField,
   getCustomFieldsByIds,
@@ -11,6 +10,7 @@ import {
 import { CustomFieldType } from "@prisma/client";
 import { CUSTOM_FIELD_TYPES } from "../constants/guest";
 import { validateCustomFieldValue } from "../utils/guestCustomValues";
+import roleValidationMiddleware from "../middlewares/roleValidationMiddleware";
 
 const router = express();
 
@@ -18,7 +18,7 @@ router.use(authMiddleware);
 
 router.get(
   "/:partyId/customFields",
-  partyValidationMiddleware,
+  roleValidationMiddleware(),
   async (req, res) => {
     const partyId = parseInt(req.params.partyId);
     try {
@@ -32,7 +32,7 @@ router.get(
 
 router.put(
   "/:partyId/customFields",
-  partyValidationMiddleware,
+  roleValidationMiddleware(),
   async (req, res) => {
     const partyId = parseInt(req.params.partyId);
     const customFields = req.body.customFields;
@@ -67,7 +67,7 @@ router.put(
 
 router.delete(
   "/:partyId/customFields/:customFieldId",
-  partyValidationMiddleware,
+  roleValidationMiddleware(),
   async (req, res) => {
     const partyId = parseInt(req.params.partyId);
     const customFieldId = parseInt(req.params.customFieldId);
@@ -91,7 +91,7 @@ router.delete(
 
 router.put(
   "/:partyId/customFields/:guestId",
-  partyValidationMiddleware,
+  roleValidationMiddleware(),
   async (req, res) => {
     const partyId = parseInt(req.params.partyId);
     const guestId = parseInt(req.params.guestId);

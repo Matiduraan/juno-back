@@ -1,8 +1,7 @@
-import { Party, PrismaClient } from "@prisma/client";
+import { Party } from "@prisma/client";
 import { layoutIdOnPartyCreation } from "./layoutController";
-import dayjs, { Dayjs } from "dayjs";
-
-const db = new PrismaClient();
+import dayjs from "dayjs";
+import { db } from "../lib/db";
 
 export const getUserParties = (
   userId: number,
@@ -90,6 +89,22 @@ export const getParty = async (partyId: number) => {
       PartyHosts: {
         select: {
           host_id: true,
+          Host: {
+            select: {
+              first_name: true,
+              last_name: true,
+              email: true,
+            },
+          },
+          Roles: {
+            where: {
+              party_id: partyId,
+            },
+            select: {
+              role_id: true,
+              role_name: true,
+            },
+          },
         },
       },
       Organizer: {

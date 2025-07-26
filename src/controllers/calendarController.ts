@@ -1,4 +1,3 @@
-import { PrismaClient } from "@prisma/client";
 import {
   createGoogleCalendar,
   createGoogleCalendarEvent,
@@ -6,8 +5,7 @@ import {
 } from "./googleController";
 import { isUserLinkedWithGoogle } from "./authController";
 import { calendar_v3 } from "googleapis";
-
-const db = new PrismaClient();
+import { db } from "../lib/db";
 
 export async function createCalendarEvent({
   end,

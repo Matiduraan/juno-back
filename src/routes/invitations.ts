@@ -8,7 +8,6 @@ import {
   deleteInvitationFile,
   getPartyInvitationByGuestToken,
 } from "../controllers/invitationsController";
-import partyValidationMiddleware from "../middlewares/partyValidationMiddleware";
 import authMiddleware from "../middlewares/authMiddlewre";
 import fs from "fs";
 import {
@@ -20,7 +19,7 @@ import {
   massiveUpdateGuestStatus,
   updateGuestStatus,
 } from "../controllers/guestsController";
-import { isDataView } from "util/types";
+import roleValidationMiddleware from "../middlewares/roleValidationMiddleware";
 
 const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "application/pdf"];
 
@@ -82,7 +81,7 @@ router.get("/webhook", (req, res) => {
 router.post(
   "/:partyId/file",
   authMiddleware,
-  partyValidationMiddleware,
+  roleValidationMiddleware(),
   upload.single("file"),
   async (req, res) => {
     const partyId = parseInt(req.params.partyId);
@@ -131,7 +130,7 @@ router.post(
 router.post(
   "/:partyId/email",
   authMiddleware,
-  partyValidationMiddleware,
+  roleValidationMiddleware(),
   async (req, res) => {
     const partyId = parseInt(req.params.partyId);
     if (isNaN(partyId)) {
@@ -162,7 +161,7 @@ router.post(
 router.post(
   "/:partyId/message",
   authMiddleware,
-  partyValidationMiddleware,
+  roleValidationMiddleware(),
   async (req, res) => {
     const partyId = parseInt(req.params.partyId);
     if (isNaN(partyId)) {
@@ -190,7 +189,7 @@ router.post(
 router.post(
   "/:partyId/test-email",
   authMiddleware,
-  partyValidationMiddleware,
+  roleValidationMiddleware(),
   async (req, res) => {
     const partyId = parseInt(req.params.partyId);
     if (isNaN(partyId)) {
@@ -223,7 +222,7 @@ router.post(
 router.post(
   "/:partyId/test-phone",
   authMiddleware,
-  partyValidationMiddleware,
+  roleValidationMiddleware(),
   async (req, res) => {
     const partyId = parseInt(req.params.partyId);
     if (isNaN(partyId)) {
@@ -322,7 +321,7 @@ router.post("/guest/:guestId/send", async (req, res) => {
 
 router.post(
   "/:partyId/massive/send",
-  partyValidationMiddleware,
+  roleValidationMiddleware(),
   async (req, res) => {
     const { ids, methods } = req.body;
     const { partyId } = req.params;
@@ -425,29 +424,34 @@ router.post(
   }
 );
 
-router.get("/:partyId", partyValidationMiddleware, async (req, res) => {
-  const partyId = parseInt(req.params.partyId);
-  if (isNaN(partyId)) {
-    res.status(400).json({ error: "Invalid party ID" });
-    return;
-  }
-  try {
-    const invitation = await getPartyInvitation(partyId);
-    if (!invitation) {
-      res.sendStatus(204);
+router.get(
+  "/:partyId",
+  authMiddleware,
+  roleValidationMiddleware(),
+  async (req, res) => {
+    const partyId = parseInt(req.params.partyId);
+    if (isNaN(partyId)) {
+      res.status(400).json({ error: "Invalid party ID" });
       return;
     }
-    res.status(200).json(invitation);
-  } catch (error) {
-    console.error("Error fetching invitation:", error);
-    res.status(500).json({ error: "Failed to fetch invitation" });
+    try {
+      const invitation = await getPartyInvitation(partyId);
+      if (!invitation) {
+        res.sendStatus(204);
+        return;
+      }
+      res.status(200).json(invitation);
+    } catch (error) {
+      console.error("Error fetching invitation:", error);
+      res.status(500).json({ error: "Failed to fetch invitation" });
+    }
   }
-});
+);
 
 router.delete(
   "/:partyId/file",
   authMiddleware,
-  partyValidationMiddleware,
+  roleValidationMiddleware(),
   async (req, res) => {
     const partyId = parseInt(req.params.partyId);
     if (isNaN(partyId)) {

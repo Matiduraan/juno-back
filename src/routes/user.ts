@@ -91,7 +91,6 @@ router.put("/preferences", async (req, res) => {
 
 router.get("/parties", async (req, res) => {
   try {
-    console.log("Fetching user parties", req.cookies);
     const userId = req.auth.userId;
     if (!userId || isNaN(parseInt(userId.toString()))) {
       res.status(400).json({ error: "Invalid user ID" });
@@ -158,7 +157,6 @@ router.get("/layouts", async (req, res) => {
       parseInt(limit?.toString() || "50")
     );
 
-    console.log("Fetched user layouts:", layouts);
     res.status(200).json(layouts);
   } catch (error) {
     console.error("Error fetching user layouts:", error);

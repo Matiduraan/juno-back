@@ -3,4 +3,5 @@ type InvitationInput = {
   email: string;
   name: string;
   status?: "PENDING" | "SENT" | "ACCEPTED";
+  role: number;
 };

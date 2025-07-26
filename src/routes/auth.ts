@@ -97,6 +97,7 @@ router.get("/validate", async (req, res) => {
 router.post("/refresh-token", async (req, res) => {
   const token = req.cookies.refresh_token;
   if (!token) {
+    console.warn("Refresh token is missing");
     res.sendStatus(401);
     return;
   }
@@ -104,6 +105,7 @@ router.post("/refresh-token", async (req, res) => {
   try {
     const userId = await isRefreshTokenValid(token);
     if (!userId) {
+      console.warn("Invalid refresh token");
       res.sendStatus(401);
       return;
     }
@@ -125,7 +127,8 @@ router.post("/refresh-token", async (req, res) => {
     });
 
     res.json({ ok: true });
-  } catch {
+  } catch (error) {
+    console.error("Refresh token error:", error);
     res.sendStatus(401);
     return;
   }

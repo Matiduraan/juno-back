@@ -1,6 +1,4 @@
-import { PrismaClient, UserPreferences } from "@prisma/client";
-
-const db = new PrismaClient();
+import { db } from "../lib/db";
 
 export async function getUserDetails(userId: number) {
   return await db.user.findUnique({
@@ -10,7 +8,6 @@ export async function getUserDetails(userId: number) {
       first_name: true,
       last_name: true,
       email: true,
-      user_role: true,
       google_id: true,
       verified: true,
     },

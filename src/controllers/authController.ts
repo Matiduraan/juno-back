@@ -1,12 +1,10 @@
-import { PrismaClient } from "@prisma/client";
 import { CreateUserInput } from "../types/auth/input";
 import jwt from "jsonwebtoken";
 import { hash } from "bcrypt";
 import dayjs from "dayjs";
 import { getGoogleUserId } from "./googleController";
 import { sendUpdatedPasswordEmail } from "./notificationsController";
-
-const db = new PrismaClient();
+import { db } from "../lib/db";
 
 export const getUserByEmail = async (email: string) => {
   return await db.user.findUnique({

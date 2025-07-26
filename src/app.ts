@@ -44,10 +44,13 @@ app.use("/host-invitations", hostInvitationsRouter);
 app.use("/invitations", invitationsRouter);
 app.use("/support", supportRouter);
 
-app.listen(PORT, (error) => {
+const server = app.listen(PORT, (error) => {
   if (error) {
     console.error(`Error starting server: ${error}`);
   } else {
     console.log(`Server is running on http://localhost:${PORT}`);
   }
 });
+
+server.keepAliveTimeout = 70000;
+server.timeout = 70000;

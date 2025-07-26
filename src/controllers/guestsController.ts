@@ -1,12 +1,11 @@
-import { PrismaClient, PartyGuest, CustomFieldType } from "@prisma/client";
+import { PartyGuest, CustomFieldType } from "@prisma/client";
 import { validateGuestFromFile } from "../validations/partyValidations";
 import { GUEST_SORTABLE_FIELDS } from "../constants/guest";
 import {
   formatCustomFieldValueToString,
   validateCustomFieldValue,
 } from "../utils/guestCustomValues";
-
-const db = new PrismaClient();
+import { db } from "../lib/db";
 
 export const getPartyGuestById = async (partyId: number, guestId: number) => {
   return await db.partyGuest.findFirst({

@@ -12,7 +12,6 @@ model User {
   email                    String                @unique
   created_at               DateTime              @default(now())
   updated_at               DateTime              @updatedAt
-  user_role                UserRole              @default(PLANNER)
   password                 String
   google_id                String?               @unique
   first_name               String
@@ -144,6 +143,7 @@ model Party {
   PartyInvitation            PartyInvitation[]
   GuestCustomFields          GuestCustomFields[]
   UserPreferences            UserPreferences[]
+  Roles                      Roles[]
 }
 
 model CalendarEvent {
@@ -183,10 +183,13 @@ model PartyHost {
   party_host_id Int      @id @default(autoincrement())
   party_id      Int
   host_id       Int
+  role_id       Int?
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
-  Host          User     @relation(fields: [host_id], references: [user_id])
-  Party         Party    @relation(fields: [party_id], references: [party_id])
+
+  Host  User   @relation(fields: [host_id], references: [user_id])
+  Party Party  @relation(fields: [party_id], references: [party_id])
+  Roles Roles? @relation(fields: [role_id], references: [role_id], onDelete: Cascade)
 }
 
 model HostInvitation {
@@ -194,10 +197,13 @@ model HostInvitation {
   name          String
   email         String
   party_id      Int
+  role_id       Int
   created_at    DateTime             @default(now())
   updated_at    DateTime             @updatedAt
   status        HostInvitationStatus @default(PENDING)
-  Party         Party                @relation(fields: [party_id], references: [party_id])
+
+  Party Party @relation(fields: [party_id], references: [party_id])
+  Role  Roles @relation(fields: [role_id], references: [role_id], onDelete: Cascade)
 }
 
 model PartyInvitation {
@@ -256,6 +262,32 @@ model GuestCustomFieldValues {
   @@unique([field_id, guest_id])
 }
 
+model Roles {
+  role_id    Int      @id @default(autoincrement())
+  role_name  String
+  party_id   Int?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  Party           Party?            @relation(fields: [party_id], references: [party_id], onDelete: Cascade)
+  RolePermissions RolePermissions[]
+  PartyHost       PartyHost[]
+  HostInvitation  HostInvitation[]
+}
+
+model RolePermissions {
+  role_permission_id Int               @id @default(autoincrement())
+  permission_key     RolePermissionKey
+  role_id            Int
+  created_at         DateTime          @default(now())
+  updated_at         DateTime          @updatedAt
+
+  Roles Roles @relation(fields: [role_id], references: [role_id], onDelete: Cascade)
+
+  @@unique([role_id, permission_key])
+  @@index([role_id])
+}
+
 enum UserRole {
   PLANNER
   HOST
@@ -284,4 +316,17 @@ enum CustomFieldType {
   NUMBER
   DATE
   CHECKBOX
+}
+
+enum RolePermissionKey {
+  EDIT_PARTY_DETAILS
+  SEND_INVITATIONS
+  MANAGE_GUESTS
+  VIEW_GUEST_LIST
+  VIEW_LAYOUT
+  EDIT_LAYOUT
+  MANAGE_GUEST_CUSTOM_FIELDS
+  MANAGE_HOSTS
+  VIEW_PARTY
+  MANAGE_HOST_PERMISSIONS
 }
