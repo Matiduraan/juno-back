@@ -1,4 +1,4 @@
-import { Party } from "@prisma/client";
+import { Party, RolePermissionKey } from "@prisma/client";
 import { layoutIdOnPartyCreation } from "./layoutController";
 import dayjs from "dayjs";
 import { db } from "../lib/db";
@@ -97,12 +97,10 @@ export const getParty = async (partyId: number) => {
             },
           },
           Roles: {
-            where: {
-              party_id: partyId,
-            },
-            select: {
-              role_id: true,
-              role_name: true,
+            include: {
+              RolePermissions: {
+                select: { permission_key: true },
+              },
             },
           },
         },
@@ -237,4 +235,37 @@ export const updateParty = async (
       Layout: true,
     },
   });
+};
+
+export const getPartyPermissions = async (
+  partyId: number,
+  userId: number
+): Promise<string[]> => {
+  const permissions = await db.partyHost.findFirst({
+    where: {
+      party_id: partyId,
+      host_id: userId,
+    },
+    include: {
+      Roles: {
+        include: {
+          RolePermissions: {
+            select: { permission_key: true },
+          },
+        },
+      },
+      Party: {
+        select: {
+          organizer_id: true,
+        },
+      },
+    },
+  });
+
+  if (permissions?.Party?.organizer_id === userId) {
+    return Object.values(RolePermissionKey);
+  }
+  return (
+    permissions?.Roles?.RolePermissions.map((perm) => perm.permission_key) || []
+  );
 };

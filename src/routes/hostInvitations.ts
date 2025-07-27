@@ -28,30 +28,28 @@ router.get("/", async (req, res) => {
   const { limit, offset } = req.query;
 
   try {
-    // const { status } = req.query;
-    // const statusEnum: string[] = Object.values(HostInvitationStatus);
-    // if (
-    //   status
-    //     ?.toString()
-    //     .split(",")
-    //     .some((s) => !statusEnum.includes(s))
-    // ) {
-    //   res.status(400).json({ error: "Invalid status filter" });
-    //   return;
-    // }
-    // const statusFilter: HostInvitationStatus[] | undefined = status
-    //   ? (status.toString().split(",") as HostInvitationStatus[])
-    //   : undefined;
-    // const invitations = await getUserHostInvitations(userId, statusFilter);
+    const { status } = req.query;
+    const statusEnum: string[] = Object.values(HostInvitationStatus);
+    if (
+      status
+        ?.toString()
+        .split(",")
+        .some((s) => !statusEnum.includes(s))
+    ) {
+      res.status(400).json({ error: "Invalid status filter" });
+      return;
+    }
+    const statusFilter: HostInvitationStatus[] | undefined = status
+      ? (status.toString().split(",") as HostInvitationStatus[])
+      : undefined;
+    const invitations = await getUserHostInvitations(userId, statusFilter);
 
     res.status(200).json({
-      results: [],
-      // results: invitations,
+      results: invitations,
       pagination: {
         limit: limit ? parseInt(limit as string) : 10,
         offset: offset ? parseInt(offset as string) : 0,
-        // total: invitations.length,
-        total: 0,
+        total: invitations.length,
       },
     });
   } catch (error) {
@@ -140,7 +138,8 @@ router.post("/role", async (req, res) => {
     Array.isArray(permissions) &&
     permissions.every((perm) =>
       Object.values(RolePermissionKey).includes(perm)
-    );
+    ) &&
+    permissions.some((perm) => perm !== RolePermissionKey.VIEW_PARTY);
   if (
     !partyId ||
     !roleName ||

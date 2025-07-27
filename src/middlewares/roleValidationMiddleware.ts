@@ -53,33 +53,25 @@ const roleValidationMiddleware =
         return;
       }
 
-      const userRole = await db.roles.findFirst({
+      const userPermissions = await db.partyHost.findFirst({
         where: {
           party_id: partyId,
-          PartyHost: {
-            some: {
-              host_id: userId,
-            },
-          },
+          host_id: userId,
         },
-        select: {
-          Party: {
-            select: {
-              organizer_id: true,
-            },
-          },
-          RolePermissions: {
-            select: {
-              permission_key: true,
+        include: {
+          Roles: {
+            include: {
+              RolePermissions: {
+                select: { permission_key: true },
+              },
             },
           },
         },
       });
-
       if (
-        !userRole ||
-        !userRole?.RolePermissions?.some(
-          (permission) => permission.permission_key === roleKey
+        !userPermissions ||
+        !userPermissions?.Roles?.RolePermissions.some(
+          (role) => role.permission_key === roleKey
         )
       ) {
         console.warn(

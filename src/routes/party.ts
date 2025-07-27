@@ -16,6 +16,7 @@ import {
   createParty,
   getParty,
   getPartyLayout,
+  getPartyPermissions,
   getPartySummaryMetrics,
   updateParty,
 } from "../controllers/partyController";
@@ -163,6 +164,26 @@ router.get(
     }
   }
 );
+
+router.get("/:partyId/permissions", async (req, res) => {
+  const userId = req.auth.userId;
+  if (!userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const { partyId } = req.params;
+  if (!partyId || isNaN(parseInt(partyId))) {
+    res.status(400).json({ error: "Invalid party ID" });
+    return;
+  }
+  try {
+    const permissions = await getPartyPermissions(parseInt(partyId), userId);
+    res.status(200).json(permissions);
+  } catch (error) {
+    console.error("Error fetching permissions:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 router.get(
   "/:partyId/guests/export",
